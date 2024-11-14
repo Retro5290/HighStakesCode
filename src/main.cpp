@@ -4,19 +4,18 @@
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
 
 //reverse later 1
-pros::MotorGroup left_motors({-16, -18, -17}, pros::MotorGearset::blue); // left motors on ports 1, 2, 3
-pros::MotorGroup right_motors({4, 3, 1}, pros::MotorGearset::blue); // right motors on ports 4, 5, 6
+pros::MotorGroup left_motors({-18, -19, -20}, pros::MotorGearset::blue); // left motors on ports 1, 2, 3
+pros::MotorGroup right_motors({17, 14, 15}, pros::MotorGearset::blue); // right motors on ports 4, 5, 6
 
 pros::MotorGroup intakeMotors({11, -12}, pros::MotorGearset::blue);
 
-pros::ADIDigitalOut clampPiston('A');
+pros::ADIDigitalOut clampPiston('G');
 pros::ADIDigitalOut intakePiston('B');
-pros::ADIDigitalOut dongerPiston('C'); 
-pros::ADIDigitalOut tankSwap('D');
+pros::ADIDigitalOut dongerPiston('H'); 
 
 //Drive train
 lemlib::Drivetrain drivetrain(
-	&left_motors, // left motor group
+	&left_motors, // left motor group2
 	&right_motors, // right motor group
 	11.4, // 11.4 inch track width
     lemlib::Omniwheel::NEW_325, // using new 3.25" omnis
@@ -25,7 +24,7 @@ lemlib::Drivetrain drivetrain(
 );
 
 pros::adi::Encoder vertical_encoder('E', 'F'); // left encoder on ports 1, 2 Relative to the tracking center: front is positive, back is negative
-pros::Imu imu(20);
+pros::Imu imu(16);
 
 lemlib::TrackingWheel vertical_tracking_wheel(
 	&vertical_encoder, // encoder
@@ -126,55 +125,6 @@ void competition_initialize() {}
 
 ASSET(toMogol1test_txt)
 void autonomous() {
-    //2
-    chassis.setPose(-57.526, 46.289, 305); 
-    clampPiston.set_value(true);
-    pros::delay(10);
-    chassis.moveToPoint(-32.665, 28.701, 4000, {.forwards = false, .maxSpeed = 40});
-    chassis.waitUntilDone();
-    clampPiston.set_value(false);
-    pros::delay(500);
-    chassis.turnToPoint(-22.977, 49.596, 4000);
-    chassis.waitUntilDone();
-    intakeMotors.move_velocity(600);
-    chassis.moveToPoint(-22.977, 49.596, 4000);
-    chassis.waitUntilDone();
-    intakeMotors.move_velocity(0);
-
-    chassis.turnToHeading(180, 4000);
-    chassis.waitUntilDone();
-   
-    
-    chassis.moveToPoint(-23.412, 9.823, 4000, {.maxSpeed = 50});
-    chassis.waitUntilDone();
-
-    //1
-    // chassis.setPose(57.526, 46.289, 55); 
-    // clampPiston.set_value(true);
-    // pros::delay(10);
-    // chassis.moveToPoint(32.665, 28.701, 4000, {.forwards = false, .maxSpeed = 40});
-    // chassis.waitUntilDone();
-    // clampPiston.set_value(false);
-    // pros::delay(500);
-    // chassis.turnToPoint(22.977, 49.596, 4000);
-    // chassis.waitUntilDone();
-    // intakeMotors.move_velocity(600);
-    // chassis.moveToPoint(22.977, 49.596, 4000);
-
-   
-    // chassis.waitUntilDone();
-    // intakeMotors.move_velocity(0);
-    
-    // chassis.turnToHeading(180, 4000);
-
-
-    // chassis.waitUntilDone();
-
-    // chassis.moveToPoint(23.412, 9.823, 4000, {.maxSpeed = 50});
-    // chassis.waitUntilDone();
-
-
-
 }
 
 /**
@@ -194,6 +144,11 @@ void autonomous() {
 
 void intake() {
     static bool r2_toggle = false;
+    static bool intake_state = false;
+    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+        intake_state = !intake_state;
+        intakePiston.set_value(intake_state);
+    }
 
     if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R2)) {
         r2_toggle = !r2_toggle;
@@ -218,14 +173,6 @@ void doungler_control(){
     dongerPiston.set_value(donger_state);
 }
 
-void tank_swap(){
-    static bool tank_state = false;
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {
-        tank_state = !tank_state;
-    }
-    tankSwap.set_value(tank_state);
-}
-
 void clamp_control() { 
     static bool clamp_state = false;
     
@@ -236,13 +183,16 @@ void clamp_control() {
     
 }
 
-void drive_control(bool &isReversed){
+void drive_control(){
+    static bool isReversed = false;
+
     int leftY = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
     int rightX = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
         if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
             isReversed = !isReversed;
         }
+
         if (isReversed) {
             leftY = -leftY;
         }
@@ -250,17 +200,14 @@ void drive_control(bool &isReversed){
 };
 
 void opcontrol() {
-    bool reverse_drive = false;
-    // loop forever
     while (true) {
         
-        drive_control(reverse_drive);
+        drive_control();
+
         clamp_control();
-        // tank_swap();  
         intake(); 
         doungler_control();
 
-        // delay to save resources
         pros::delay(25);
     }
 }
