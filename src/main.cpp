@@ -1,5 +1,6 @@
 #include "main.h"
 #include "lemlib/api.hpp"
+#include <cmath>
 
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
 
@@ -10,9 +11,8 @@ pros::MotorGroup right_motors({17, 14, 15}, pros::MotorGearset::blue); // right 
 pros::MotorGroup intakeMotors({11, -12}, pros::MotorGearset::blue);
 
 pros::ADIDigitalOut clampPiston('G');
-pros::ADIDigitalOut intakePiston('B');
-pros::ADIDigitalOut dongerPiston('H'); 
-
+pros::ADIDigitalOut hangPiston('D');
+pros::ADIDigitalOut dongerPiston('H', true); 
 //Drive train
 lemlib::Drivetrain drivetrain(
 	&left_motors, // left motor group2
@@ -77,9 +77,8 @@ lemlib::Chassis chassis(drivetrain, // drivetrain settings
  */
 void initialize() {
     pros::lcd::initialize(); // initialize brain screen
-    chassis.calibrate(); // calibrate sensors
-    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
 
+    chassis.calibrate(); // calibrate sensors
     // print position to brain screen
     pros::Task screen_task([&]() {
         while (true) {
@@ -123,9 +122,231 @@ void competition_initialize() {}
  * from where it left off.
  */
 
-ASSET(toMogol1test_txt)
-void autonomous() {
+// ASSET(MidMogoRush_txt)
+// void autonomous() {
+//     // Set up chassis
+//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+//     chassis.setPose(-50.513, -61.352, 270);
+
+//     // Rush mid mogo
+//     chassis.follow(MidMogoRush_txt, 10, 4000, false); // Rush mogo
+//     chassis.waitUntilDone();
+
+//     // Clamp mogo + Pull out
+//     clampPiston.set_value(true);
+//     pros::delay(400);
+//     chassis.swingToHeading(20, lemlib::DriveSide::RIGHT, 1000); // Pull out of center (20)
+//     chassis.waitUntilDone();
+
+//     // Get the rings on the ground
+//     intakeMotors.move_velocity(600);
+//     chassis.moveToPoint(-11.293, -38.057, 500); // Part 1 intake ring
+//     chassis.waitUntilDone();
+
+//     // Turn to face wall (back facing wall)
+//     chassis.turnToHeading(90, 700); // Turn to side (back facing wall)
+//     pros::delay(400);
+//     chassis.waitUntilDone();
+
+//     // Move to wall
+//     chassis.moveToPoint(-49.195, -38.057, 1500, {.forwards = false}); // goto wall
+//     chassis.waitUntilDone();
+
+//     // Release goal and face goal 2 (back facing goal 2)
+//     intakeMotors.move_velocity(0);
+//     clampPiston.set_value(false);
+//     pros::delay(400);
+//     chassis.turnToPoint(-23.04, -22.877, 700, {.forwards = false}); // Turn to face goal
+//     chassis.waitUntilDone();
+
+//     // Move to goal 2
+//     chassis.moveToPoint(-23.04, -22.877, 2500, {.forwards = false, .maxSpeed = 60}); // Move to goal
+//     chassis.waitUntilDone();
+
+//     // Clamp goal 2
+//     clampPiston.set_value(true);
+//     pros::delay(400);
+//     chassis.waitUntilDone();
+
+//     // Turn to mid 
+//     chassis.turnToPoint(-23.04, -9.478, 1000);
+//     chassis.waitUntilDone();
+
+//     // Move to mid 
+//     intakeMotors.move_velocity(0);
+//     chassis.moveToPoint(-23.04, -9.478, 2000, {.forwards = true, .maxSpeed = 50});
+//     chassis.waitUntilDone();
+// }
+
+// Reverse 2
+// ASSET(MidMogoRushR_txt)
+// void autonomous() {
+//     // Set up chassis
+//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+//     chassis.setPose(50.513, -61.352, 90);     
+
+//     // Rush mid mogo
+//     chassis.follow(MidMogoRushR_txt, 10, 4000, false); // Rush mogo
+//     chassis.waitUntilDone();
+
+//     // Clamp mogo + Pull out
+//     clampPiston.set_value(true);
+//     pros::delay(400);
+//     chassis.swingToHeading(340, lemlib::DriveSide::LEFT, 1000); // Pull out of center (20)
+//     chassis.waitUntilDone();
+
+//     // Get the rings on the ground
+//     intakeMotors.move_velocity(600);
+//     chassis.moveToPoint(11.293, -38.057, 500); // Part 1 intake ring
+//     chassis.waitUntilDone();
+
+//     // Turn to face wall (back facing wall)
+//     chassis.turnToHeading(270, 700); // Turn to side (back facing wall)
+//     pros::delay(400);
+//     chassis.waitUntilDone();
+
+//     // Move to wall
+//     chassis.moveToPoint(49.195, -38.057, 1500, {.forwards = false}); // goto wall
+//     chassis.waitUntilDone();
+
+//     // Release goal and face goal 2 (back facing goal 2)
+//     intakeMotors.move_velocity(0);
+//     clampPiston.set_value(false);
+//     pros::delay(400);
+//     chassis.turnToPoint(23.04, -22.877, 700, {.forwards = false}); // Turn to face goal
+//     chassis.waitUntilDone();
+
+//     // Move to goal 2
+//     chassis.moveToPoint(23.04, -22.877, 2500, {.forwards = false, .maxSpeed = 60}); // Move to goal
+//     chassis.waitUntilDone();
+
+//     // Clamp goal 2
+//     clampPiston.set_value(true);
+//     pros::delay(400);
+//     chassis.waitUntilDone();
+
+//     // Turn to mid 
+//     chassis.turnToPoint(23.04, -9.478, 1000);
+//     chassis.waitUntilDone();
+
+//     // Move to mid 
+//     intakeMotors.move_velocity(0);
+//     chassis.moveToPoint(23.04, -9.478, 2000, {.forwards = true, .maxSpeed = 50});
+//     chassis.waitUntilDone();
+// }
+
+// void autonomous(){
+//     chassis.setPose(0, 0, 90);
+//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+
+//     chassis.moveToPoint(24, 0, 4000);
+// }
+
+// 1 stake
+void autonomous(){
+    chassis.setPose(-51.132, 24, 270);
+    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+
+    chassis.moveToPoint(-30.789, 24, 3000, {.forwards = false, .maxSpeed = 70});
+    chassis.waitUntilDone();
+
+    clampPiston.set_value(true);
+    pros::delay(400);
+
+    intakeMotors.move_velocity(600);
+    chassis.turnToPoint(-23.427, 47.258, 500);
+    chassis.waitUntilDone();
+
+    chassis.moveToPoint(-23.427, 47.258, 2000, {.forwards = true, .maxSpeed = 80});
+    chassis.waitUntilDone();
+
+    chassis.turnToPoint(-23.427, 9.865, 1000);
+    chassis.waitUntilDone();
+
+    chassis.moveToPoint(-23.427, 9.865, 2000, {.forwards = true, .maxSpeed = 50});
+    chassis.waitUntilDone();
+
+    intakeMotors.move_velocity(0);
 }
+
+// void autonomous(){
+//     chassis.setPose(51.132, 24, 90);
+//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+
+//     chassis.moveToPoint(30.789, 24, 3000, {.forwards = false, .maxSpeed = 70});
+//     chassis.waitUntilDone();
+
+//     clampPiston.set_value(true);
+//     pros::delay(400);
+
+//     intakeMotors.move_velocity(600);
+//     chassis.turnToPoint(23.427, 47.258, 500);
+//     chassis.waitUntilDone();
+
+//     chassis.moveToPoint(23.427, 47.258, 2000, {.forwards = true, .maxSpeed = 80});
+//     chassis.waitUntilDone();
+
+//     chassis.turnToPoint(23.427, 9.865, 1000);
+//     chassis.waitUntilDone();
+
+//     chassis.moveToPoint(23.427, 9.865, 2000, {.forwards = true, .maxSpeed = 50});
+//     chassis.waitUntilDone();
+
+//     intakeMotors.move_velocity(0);
+// }
+
+// void autonomous(){
+//     chassis.setPose(51.132, -24, 90);
+//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+
+//     chassis.moveToPoint(30.789, -24, 3000, {.forwards = false, .maxSpeed = 70});
+//     chassis.waitUntilDone();
+
+//     clampPiston.set_value(true);
+//     pros::delay(400);
+
+//     intakeMotors.move_velocity(600);
+//     chassis.turnToPoint(23.427, -47.258, 500);
+//     chassis.waitUntilDone();
+
+//     chassis.moveToPoint(23.427, -47.258, 2000, {.forwards = true, .maxSpeed = 80});
+//     chassis.waitUntilDone();
+
+//     chassis.turnToPoint(23.427, -9.865, 1000);
+//     chassis.waitUntilDone();
+
+//     chassis.moveToPoint(23.427, -9.865, 2000, {.forwards = true, .maxSpeed = 50});
+//     chassis.waitUntilDone();
+
+//     intakeMotors.move_velocity(0);
+// }
+
+// void autonomous(){
+//     chassis.setPose(-51.132, -24, 270);
+//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+
+//     chassis.moveToPoint(-30.789, -24, 3000, {.forwards = false, .maxSpeed = 70});
+//     chassis.waitUntilDone();
+
+//     clampPiston.set_value(true);
+//     pros::delay(400);
+
+//     intakeMotors.move_velocity(600);
+//     chassis.turnToPoint(-23.427, -47.258, 500);
+//     chassis.waitUntilDone();
+
+//     chassis.moveToPoint(-23.427, -47.258, 2000, {.forwards = true, .maxSpeed = 80});
+//     chassis.waitUntilDone();
+
+//     chassis.turnToPoint(-23.427, -9.865, 1000);
+//     chassis.waitUntilDone();
+
+//     chassis.moveToPoint(-23.427, -9.865, 2000, {.forwards = false, .maxSpeed = 50});
+//     chassis.waitUntilDone();
+
+//     intakeMotors.move_velocity(0);
+// }
+
 
 /**
  * Runs the operator control code. This function will be started in its own task
@@ -142,13 +363,16 @@ void autonomous() {
  */
 
 
+void hang(){
+    static bool hangState = false;
+    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+        hangState = !hangState;
+        hangPiston.set_value(hangState);
+    }
+}
+
 void intake() {
     static bool r2_toggle = false;
-    static bool intake_state = false;
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
-        intake_state = !intake_state;
-        intakePiston.set_value(intake_state);
-    }
 
     if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R2)) {
         r2_toggle = !r2_toggle;
@@ -166,7 +390,7 @@ void intake() {
 }
 
 void doungler_control(){
-    static bool donger_state = false;
+    static bool donger_state = true   ;
     if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
         donger_state = !donger_state;
     }
@@ -180,7 +404,6 @@ void clamp_control() {
         clamp_state = !clamp_state;
         clampPiston.set_value(clamp_state);
     }
-    
 }
 
 void drive_control(){
@@ -200,10 +423,16 @@ void drive_control(){
 };
 
 void opcontrol() {
+    // Wait until 1 minute and 30 seconds has passed
+    // pros::Task wait_till_done([&](){
+    //     pros::delay(95000);
+    //     hangPiston.set_value(false);
+    // });
+
     while (true) {
         
         drive_control();
-
+        hang();
         clamp_control();
         intake(); 
         doungler_control();
