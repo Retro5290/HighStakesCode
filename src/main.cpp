@@ -1,73 +1,131 @@
 #include "main.h"
 #include "lemlib/api.hpp"
-#include <cmath>
+#include "config.hpp"
 
-pros::Controller controller(pros::E_CONTROLLER_MASTER);
+namespace controls {
+    class Mechanisms {
+    private:
+        enum class LBToggleState {
+            IDLE,
+            INTAKE1,
+            INTAKE2
+        };
 
-//reverse later 1
-pros::MotorGroup left_motors({-18, -19, -20}, pros::MotorGearset::blue); // left motors on ports 1, 2, 3
-pros::MotorGroup right_motors({17, 14, 15}, pros::MotorGearset::blue); // right motors on ports 4, 5, 6
+        static constexpr double LB_POSITIONS[] = {
+            0.0,    // IDLE
+            -200.0,  // INTAKE1
+            -400.0   // INTAKE2
+        };
 
-pros::MotorGroup intakeMotors({11, -12}, pros::MotorGearset::blue);
+        static constexpr double LB_BOUNARIES[] = {
+            400, // Below this is INTAKE1
+            800  // Below this is INTAKE2
+            // Rest is Idle
+        };
 
-pros::ADIDigitalOut clampPiston('G');
-pros::ADIDigitalOut hangPiston('D');
-pros::ADIDigitalOut dongerPiston('H', true); 
-//Drive train
-lemlib::Drivetrain drivetrain(
-	&left_motors, // left motor group2
-	&right_motors, // right motor group
-	11.4, // 11.4 inch track width
-    lemlib::Omniwheel::NEW_325, // using new 3.25" omnis
-    450, // drivetrain rpm is 450
-    2 // horizontal drift is 2 (for now)
-);
+    public:
+        static void drive(){
+            int x = robot::masterController.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+            int y = robot::masterController.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+            robot::drivetrain::chassis.arcade(x, y);
+        }
+        static void update_hang() {
+            static bool hangState = false;
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+                hangState = !hangState;
+                robot::mechanisms::hang.set_value(hangState);
+            }
+        }
+        static void update_LB(){
+            static LBToggleState lbState = LBToggleState::IDLE;
+            static bool isAutoMoving = false;
 
-pros::adi::Encoder vertical_encoder('E', 'F'); // left encoder on ports 1, 2 Relative to the tracking center: front is positive, back is negative
-pros::Imu imu(16);
+            int leftLBPosition = robot::mechanisms::lbMotors.get_position(0);
+            int rightLBPosition = robot::mechanisms::lbMotors.get_position(1);
+            int averageLBPosition = abs((leftLBPosition + rightLBPosition) / 2);
 
-lemlib::TrackingWheel vertical_tracking_wheel(
-	&vertical_encoder, // encoder
-	lemlib::Omniwheel::NEW_275, 
-	0.0 // 0 inch distance from tracking center
-); 
+            if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+                robot::mechanisms::lbMotors.move_velocity(100);
+                isAutoMoving = false;
+            } else if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
+                isAutoMoving = false;
+                robot::mechanisms::lbMotors.move_velocity(-100);
+            } else if (!isAutoMoving) {
+                robot::mechanisms::lbMotors.move_velocity(0);
+            }
 
-lemlib::OdomSensors sensors(&vertical_tracking_wheel,
-                            nullptr,
-                            nullptr,
-                            nullptr, 
-                            &imu
-);
+            if (robot::mechanisms::lbLimitSwitch.get_value()) {
+                lbState = LBToggleState::IDLE;
+                robot::mechanisms::lbMotors.tare_position();
+                isAutoMoving = false;
+            }
 
-// lateral PID controller
-lemlib::ControllerSettings lateral_controller(10, // proportional gain (kP)
-                                              0, // integral gain (kI)
-                                              3, // derivative gain (kD)
-                                              3, // anti windup
-                                              1, // small error range, in inches
-                                              100, // small error range timeout, in milliseconds
-                                              3, // large error range, in inches
-                                              500, // large error range timeout, in milliseconds
-                                              20 // maximum acceleration (slew)
-);
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+                switch (lbState) {
+                    case LBToggleState::IDLE:
+                        lbState = LBToggleState::INTAKE1;
+                        isAutoMoving = true;
+                        break;
+                    case LBToggleState::INTAKE1:
+                        lbState = LBToggleState::INTAKE2;
+                        isAutoMoving = true;
+                        break;
+                    case LBToggleState::INTAKE2:
+                        break;
+                    default:
+                        if (averageLBPosition < LB_BOUNARIES[0]) {
+                            lbState = LBToggleState::INTAKE1;
+                            isAutoMoving = true;    
+                        } else if (averageLBPosition < LB_BOUNARIES[1]) {
+                            lbState = LBToggleState::INTAKE2;
+                            isAutoMoving = true;
+                        } else {
+                            lbState = LBToggleState::IDLE;
+                            isAutoMoving = true;
+                        }
+                        break;
+                }
+                
+            }
 
-// angular PID controller
-lemlib::ControllerSettings angular_controller(2, // proportional gain (kP)
-                                              0, // integral gain (kI)
-                                              10, // derivative gain (kD)
-                                              3, // anti windup
-                                              1, // small error range, in degrees
-                                              100, // small error range timeout, in milliseconds
-                                              3, // large error range, in degrees
-                                              500, // large error range timeout, in milliseconds
-                                              0 // maximum acceleration (slew)
-);
+            if (isAutoMoving) {
+                if (lbState == LBToggleState::IDLE) {
+                    robot::mechanisms::lbMotors.move_velocity(200);
+                } else {
+                    robot::mechanisms::lbMotors.move_absolute(LB_POSITIONS[static_cast<int>(lbState)], 200);
+                    if (averageLBPosition == LB_POSITIONS[static_cast<int>(lbState)]) {
+                        isAutoMoving = false;
+                    }
+                }
+            }
+        }
 
-lemlib::Chassis chassis(drivetrain, // drivetrain settings
-                        lateral_controller, // lateral PID settings
-                        angular_controller, // angular PID settings
-                        sensors // odometry sensors
-);
+        static void update_intake() {
+            static bool r2Toggle = false;
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R2)) {
+                r2Toggle = !r2Toggle;
+            }
+
+            const int intake_speed = robot::constants::INTAKE_SPEED;
+            if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+                robot::mechanisms::intakeMotor.move_velocity(intake_speed);
+            } else if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
+                robot::mechanisms::intakeMotor.move_velocity(-intake_speed);
+            } else if (r2Toggle) {
+                robot::mechanisms::intakeMotor.move_velocity(intake_speed);
+            } else {
+                robot::mechanisms::intakeMotor.move_velocity(0);
+            }
+        }
+        static void update_clamp() {
+            static bool clampState = false;
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L2)) {
+                clampState = !clampState;
+                robot::mechanisms::clamp.set_value(clampState);
+            }
+        }
+    };
+}
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -78,16 +136,24 @@ lemlib::Chassis chassis(drivetrain, // drivetrain settings
 void initialize() {
     pros::lcd::initialize(); // initialize brain screen
 
-    chassis.calibrate(); // calibrate sensors
+    robot::drivetrain::chassis.calibrate(); // calibrate sensors
+    robot::mechanisms::lbMotors.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
     // print position to brain screen
     pros::Task screen_task([&]() {
         while (true) {
+
+            double averageAngle = (robot::mechanisms::lbMotors.get_position(0) + robot::mechanisms::lbMotors.get_position(1)) / 2;
+
             // print robot location to the brain screen 
-            pros::lcd::print(0, "X: %f", chassis.getPose().x); // x
-            pros::lcd::print(1, "Y: %f", chassis.getPose().y); // y
-            pros::lcd::print(2, "Theta: %f", chassis.getPose().theta); // heading
+            pros::lcd::print(0, "X: %f", robot::drivetrain::chassis.getPose().x); // x
+            pros::lcd::print(1, "Y: %f", robot::drivetrain::chassis.getPose().y); // y
+            pros::lcd::print(2, "Theta: %f", robot::drivetrain::chassis.getPose().theta); // heading
+            pros::lcd::print(3, "lbAngle1: %f", robot::mechanisms::lbMotors.get_position(0));
+            pros::lcd::print(4, "lbAngle2: %f", robot::mechanisms::lbMotors.get_position(1));
+            pros::lcd::print(5, "lbAngleAvg: %f", averageAngle);
+            pros::lcd::print(6, "lbLimitSwitch: %d", robot::mechanisms::lbLimitSwitch.get_value());
             // delay to save resources
-            pros::delay(20);
+            pros::delay(robot::constants::LOOP_DELAY);
         }
     });
 }
@@ -111,244 +177,6 @@ void disabled() {}
 void competition_initialize() {}
 
 /**
- * Runs the user autonomous code. This function will be started in its own task
- * with the default priority and stack size whenever the robot is enabled via
- * the Field Management System or the VEX Competition Switch in the autonomous
- * mode. Alternatively, this function may be called in initialize or opcontrol
- * for non-competition testing purposes.
- *
- * If the robot is disabled or communications is lost, the autonomous task
- * will be stopped. Re-enabling the robot will restart the task, not re-start it
- * from where it left off.
- */
-
-// ASSET(MidMogoRush_txt)
-// void autonomous() {
-//     // Set up chassis
-//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
-//     chassis.setPose(-50.513, -61.352, 270);
-
-//     // Rush mid mogo
-//     chassis.follow(MidMogoRush_txt, 10, 4000, false); // Rush mogo
-//     chassis.waitUntilDone();
-
-//     // Clamp mogo + Pull out
-//     clampPiston.set_value(true);
-//     pros::delay(400);
-//     chassis.swingToHeading(20, lemlib::DriveSide::RIGHT, 1000); // Pull out of center (20)
-//     chassis.waitUntilDone();
-
-//     // Get the rings on the ground
-//     intakeMotors.move_velocity(600);
-//     chassis.moveToPoint(-11.293, -38.057, 500); // Part 1 intake ring
-//     chassis.waitUntilDone();
-
-//     // Turn to face wall (back facing wall)
-//     chassis.turnToHeading(90, 700); // Turn to side (back facing wall)
-//     pros::delay(400);
-//     chassis.waitUntilDone();
-
-//     // Move to wall
-//     chassis.moveToPoint(-49.195, -38.057, 1500, {.forwards = false}); // goto wall
-//     chassis.waitUntilDone();
-
-//     // Release goal and face goal 2 (back facing goal 2)
-//     intakeMotors.move_velocity(0);
-//     clampPiston.set_value(false);
-//     pros::delay(400);
-//     chassis.turnToPoint(-23.04, -22.877, 700, {.forwards = false}); // Turn to face goal
-//     chassis.waitUntilDone();
-
-//     // Move to goal 2
-//     chassis.moveToPoint(-23.04, -22.877, 2500, {.forwards = false, .maxSpeed = 60}); // Move to goal
-//     chassis.waitUntilDone();
-
-//     // Clamp goal 2
-//     clampPiston.set_value(true);
-//     pros::delay(400);
-//     chassis.waitUntilDone();
-
-//     // Turn to mid 
-//     chassis.turnToPoint(-23.04, -9.478, 1000);
-//     chassis.waitUntilDone();
-
-//     // Move to mid 
-//     intakeMotors.move_velocity(0);
-//     chassis.moveToPoint(-23.04, -9.478, 2000, {.forwards = true, .maxSpeed = 50});
-//     chassis.waitUntilDone();
-// }
-
-// Reverse 2
-// ASSET(MidMogoRushR_txt)
-// void autonomous() {
-//     // Set up chassis
-//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
-//     chassis.setPose(50.513, -61.352, 90);     
-
-//     // Rush mid mogo
-//     chassis.follow(MidMogoRushR_txt, 10, 4000, false); // Rush mogo
-//     chassis.waitUntilDone();
-
-//     // Clamp mogo + Pull out
-//     clampPiston.set_value(true);
-//     pros::delay(400);
-//     chassis.swingToHeading(340, lemlib::DriveSide::LEFT, 1000); // Pull out of center (20)
-//     chassis.waitUntilDone();
-
-//     // Get the rings on the ground
-//     intakeMotors.move_velocity(600);
-//     chassis.moveToPoint(11.293, -38.057, 500); // Part 1 intake ring
-//     chassis.waitUntilDone();
-
-//     // Turn to face wall (back facing wall)
-//     chassis.turnToHeading(270, 700); // Turn to side (back facing wall)
-//     pros::delay(400);
-//     chassis.waitUntilDone();
-
-//     // Move to wall
-//     chassis.moveToPoint(49.195, -38.057, 1500, {.forwards = false}); // goto wall
-//     chassis.waitUntilDone();
-
-//     // Release goal and face goal 2 (back facing goal 2)
-//     intakeMotors.move_velocity(0);
-//     clampPiston.set_value(false);
-//     pros::delay(400);
-//     chassis.turnToPoint(23.04, -22.877, 700, {.forwards = false}); // Turn to face goal
-//     chassis.waitUntilDone();
-
-//     // Move to goal 2
-//     chassis.moveToPoint(23.04, -22.877, 2500, {.forwards = false, .maxSpeed = 60}); // Move to goal
-//     chassis.waitUntilDone();
-
-//     // Clamp goal 2
-//     clampPiston.set_value(true);
-//     pros::delay(400);
-//     chassis.waitUntilDone();
-
-//     // Turn to mid 
-//     chassis.turnToPoint(23.04, -9.478, 1000);
-//     chassis.waitUntilDone();
-
-//     // Move to mid 
-//     intakeMotors.move_velocity(0);
-//     chassis.moveToPoint(23.04, -9.478, 2000, {.forwards = true, .maxSpeed = 50});
-//     chassis.waitUntilDone();
-// }
-
-// void autonomous(){
-//     chassis.setPose(0, 0, 90);
-//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
-
-//     chassis.moveToPoint(24, 0, 4000);
-// }
-
-// 1 stake
-void autonomous(){
-    chassis.setPose(-51.132, 24, 270);
-    chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
-
-    chassis.moveToPoint(-30.789, 24, 3000, {.forwards = false, .maxSpeed = 70});
-    chassis.waitUntilDone();
-
-    clampPiston.set_value(true);
-    pros::delay(400);
-
-    intakeMotors.move_velocity(600);
-    chassis.turnToPoint(-23.427, 47.258, 500);
-    chassis.waitUntilDone();
-
-    chassis.moveToPoint(-23.427, 47.258, 2000, {.forwards = true, .maxSpeed = 80});
-    chassis.waitUntilDone();
-
-    chassis.turnToPoint(-23.427, 9.865, 1000);
-    chassis.waitUntilDone();
-
-    chassis.moveToPoint(-23.427, 9.865, 2000, {.forwards = true, .maxSpeed = 50});
-    chassis.waitUntilDone();
-
-    intakeMotors.move_velocity(0);
-}
-
-// void autonomous(){
-//     chassis.setPose(51.132, 24, 90);
-//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
-
-//     chassis.moveToPoint(30.789, 24, 3000, {.forwards = false, .maxSpeed = 70});
-//     chassis.waitUntilDone();
-
-//     clampPiston.set_value(true);
-//     pros::delay(400);
-
-//     intakeMotors.move_velocity(600);
-//     chassis.turnToPoint(23.427, 47.258, 500);
-//     chassis.waitUntilDone();
-
-//     chassis.moveToPoint(23.427, 47.258, 2000, {.forwards = true, .maxSpeed = 80});
-//     chassis.waitUntilDone();
-
-//     chassis.turnToPoint(23.427, 9.865, 1000);
-//     chassis.waitUntilDone();
-
-//     chassis.moveToPoint(23.427, 9.865, 2000, {.forwards = true, .maxSpeed = 50});
-//     chassis.waitUntilDone();
-
-//     intakeMotors.move_velocity(0);
-// }
-
-// void autonomous(){
-//     chassis.setPose(51.132, -24, 90);
-//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
-
-//     chassis.moveToPoint(30.789, -24, 3000, {.forwards = false, .maxSpeed = 70});
-//     chassis.waitUntilDone();
-
-//     clampPiston.set_value(true);
-//     pros::delay(400);
-
-//     intakeMotors.move_velocity(600);
-//     chassis.turnToPoint(23.427, -47.258, 500);
-//     chassis.waitUntilDone();
-
-//     chassis.moveToPoint(23.427, -47.258, 2000, {.forwards = true, .maxSpeed = 80});
-//     chassis.waitUntilDone();
-
-//     chassis.turnToPoint(23.427, -9.865, 1000);
-//     chassis.waitUntilDone();
-
-//     chassis.moveToPoint(23.427, -9.865, 2000, {.forwards = true, .maxSpeed = 50});
-//     chassis.waitUntilDone();
-
-//     intakeMotors.move_velocity(0);
-// }
-
-// void autonomous(){
-//     chassis.setPose(-51.132, -24, 270);
-//     chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
-
-//     chassis.moveToPoint(-30.789, -24, 3000, {.forwards = false, .maxSpeed = 70});
-//     chassis.waitUntilDone();
-
-//     clampPiston.set_value(true);
-//     pros::delay(400);
-
-//     intakeMotors.move_velocity(600);
-//     chassis.turnToPoint(-23.427, -47.258, 500);
-//     chassis.waitUntilDone();
-
-//     chassis.moveToPoint(-23.427, -47.258, 2000, {.forwards = true, .maxSpeed = 80});
-//     chassis.waitUntilDone();
-
-//     chassis.turnToPoint(-23.427, -9.865, 1000);
-//     chassis.waitUntilDone();
-
-//     chassis.moveToPoint(-23.427, -9.865, 2000, {.forwards = false, .maxSpeed = 50});
-//     chassis.waitUntilDone();
-
-//     intakeMotors.move_velocity(0);
-// }
-
-
-/**
  * Runs the operator control code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
  * the Field Management System or the VEX Competition Switch in the operator
@@ -361,82 +189,14 @@ void autonomous(){
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-
-
-void hang(){
-    static bool hangState = false;
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
-        hangState = !hangState;
-        hangPiston.set_value(hangState);
-    }
-}
-
-void intake() {
-    static bool r2_toggle = false;
-
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R2)) {
-        r2_toggle = !r2_toggle;
-    }
-
-    if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-        intakeMotors.move_velocity(600);
-    } else if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
-        intakeMotors.move_velocity(-600);
-    } else if (r2_toggle) {
-        intakeMotors.move_velocity(600);
-    } else {
-        intakeMotors.move_velocity(0);
-    }
-}
-
-void doungler_control(){
-    static bool donger_state = true   ;
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
-        donger_state = !donger_state;
-    }
-    dongerPiston.set_value(donger_state);
-}
-
-void clamp_control() { 
-    static bool clamp_state = false;
-    
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
-        clamp_state = !clamp_state;
-        clampPiston.set_value(clamp_state);
-    }
-}
-
-void drive_control(){
-    static bool isReversed = false;
-
-    int leftY = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-    int rightX = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-
-        if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
-            isReversed = !isReversed;
-        }
-
-        if (isReversed) {
-            leftY = -leftY;
-        }
-        chassis.arcade(leftY, rightX);
-};
-
 void opcontrol() {
-    // Wait until 1 minute and 30 seconds has passed
-    // pros::Task wait_till_done([&](){
-    //     pros::delay(95000);
-    //     hangPiston.set_value(false);
-    // });
-
     while (true) {
-        
-        drive_control();
-        hang();
-        clamp_control();
-        intake(); 
-        doungler_control();
-
-        pros::delay(25);
+        // controls::Mechanisms::drive();
+        // controls::Mechanisms::update_hang();
+        // controls::Mechanisms::update_intake();
+        // controls::Mechanisms::update_clamp();
+        controls::Mechanisms::update_LB();
+        // ... other updates ...
+        pros::delay(robot::constants::LOOP_DELAY);
     }
 }
