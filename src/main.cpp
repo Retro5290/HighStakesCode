@@ -10,6 +10,7 @@
     RIGHT: LB Toggle
     DOWN: Doinker
     LEFT: Hang
+    UP: Intake Toggle
     B: Clamp
     Y: REVERSE DRIVE
 
@@ -20,23 +21,18 @@ namespace controls {
     private:
         enum class LBToggleState {
             IDLE,
-            INTAKE1,
-            INTAKE2,
+            INTAKE,
             CLEAR
-        };
+        }; 
 
         static constexpr double LB_POSITIONS[] = {
             0.0,    // IDLE
-            -200.0,  // INTAKE1
-            -400.0,   // INTAKE2
+            -340.0,  // INTAKE
             -750.0   // CLEAR
         };
 
-        static constexpr double LB_BOUNARIES[] = {
-            400, // Below this is INTAKE1
-            725  // Below this is INTAKE2
-            // Rest is Idle
-        };
+        static constexpr int LB_POSITION_LOSS_BOUNDARY = 725;
+        static constexpr int LB_FINETUNE_BOUNDARY = 300;
 
         static constexpr double MIN_VELOCITY = 50;  
         static constexpr double SLEW_RATE = 100;
@@ -69,43 +65,51 @@ namespace controls {
             return targetVelocity;
         }
 
-    public:
+    public:      
         static void drive(){
             static bool reverseDrive = false;
 
             int x = robot::masterController.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
             int y = robot::masterController.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-            if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_Y)) {
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
                 reverseDrive = !reverseDrive;
             }
             if (reverseDrive) {
-                y = -y;
+                x = -x;
             }
             robot::drivetrain::chassis.arcade(x, y);
         }
         static void update_hang() {
+            
             static bool hangState = false;
-            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)) {
                 hangState = !hangState;
                 robot::mechanisms::hang.set_value(hangState);
             }
         }
+
         static void update_LB(){
+            // Static Variables
             static LBToggleState lbState = LBToggleState::IDLE;
             static bool isAutoMoving = false;
             static bool isOutOfBounds = false;
 
+            // Position Variables
             int leftLBPosition = robot::mechanisms::lbMotors.get_position(0);
             int rightLBPosition = robot::mechanisms::lbMotors.get_position(1);
-            int averageLBPosition = abs((leftLBPosition + rightLBPosition) / 2);
+            int averageLBPosition = std::abs((leftLBPosition + rightLBPosition) / 2);
 
-            if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-                robot::mechanisms::lbMotors.move_velocity(150);
+            // Manual Speed Variables
+            int manualSpeed = (averageLBPosition < LB_FINETUNE_BOUNDARY) ? 30 : 150;
+
+            // Manual Movement
+            if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+                robot::mechanisms::lbMotors.move_velocity(-manualSpeed);
                 isOutOfBounds = true;
                 isAutoMoving = false;
-                
-            } else if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
-                robot::mechanisms::lbMotors.move_velocity(-150);
+
+            } else if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) {
+                robot::mechanisms::lbMotors.move_velocity(manualSpeed);
                 isOutOfBounds = true;
                 isAutoMoving = false;
 
@@ -115,31 +119,36 @@ namespace controls {
                 robot::mechanisms::lbMotors.move_velocity(currentVelocity);
             }
 
+            // Limit Switch Interrupt
             if (robot::mechanisms::lbLimitSwitch.get_value()) {
-                robot::mechanisms::lbMotors.tare_position(0);
-                robot::mechanisms::lbMotors.tare_position(1);
                 isOutOfBounds = false;
                 robot::mechanisms::lbMotors.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
+                // Reset Auto Movement
                 if (isAutoMoving && lbState == LBToggleState::IDLE) {
+                    robot::mechanisms::lbMotors.tare_position(0);
+                    robot::mechanisms::lbMotors.tare_position(1);
                     isAutoMoving = false;
                 }
+
+                // User Interrupt
                 if (!isAutoMoving) {
+                    robot::mechanisms::lbMotors.tare_position(0);
+                    robot::mechanisms::lbMotors.tare_position(1);
                     lbState = LBToggleState::IDLE;
                 }
             } else {
                 robot::mechanisms::lbMotors.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
             }
 
-            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)) {
+            // Toggle Auto Movement
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+
+                // After user interrupts
                 if (isOutOfBounds) {
-                    if (averageLBPosition < LB_BOUNARIES[0]) {
-                        lbState = LBToggleState::INTAKE1;
+                    if (averageLBPosition < LB_POSITION_LOSS_BOUNDARY) {
+                        lbState = LBToggleState::INTAKE;
                         isAutoMoving = true;  
-                        isOutOfBounds = false;
-                    } else if (averageLBPosition < LB_BOUNARIES[1]) {
-                        lbState = LBToggleState::INTAKE2;
-                        isAutoMoving = true;
                         isOutOfBounds = false;
                     } else {
                         lbState = LBToggleState::IDLE;
@@ -150,52 +159,60 @@ namespace controls {
                 } else {
                     switch (lbState) {
                     case LBToggleState::IDLE:
-                        lbState = LBToggleState::INTAKE1;
+                        lbState = LBToggleState::INTAKE;
                         isAutoMoving = true;
                         break;
-                    case LBToggleState::INTAKE1:
-                        lbState = LBToggleState::INTAKE2;
-                        isAutoMoving = true;
-                        break;
-                    case LBToggleState::INTAKE2:
+                    case LBToggleState::INTAKE:
                         lbState = LBToggleState::CLEAR;
                         isAutoMoving = true;
                         break;
                     case LBToggleState::CLEAR:
-                        lbState = LBToggleState::IDLE;
+                        lbState = LBToggleState::CLEAR;
                         isAutoMoving = true;
                         break;
                     }
                 }
             }
 
+            // Auto Movement
             if (isAutoMoving) {
                 if (lbState == LBToggleState::IDLE) {
                     robot::mechanisms::lbMotors.move_velocity(200);
                 } else {
-                    robot::mechanisms::lbMotors.move_absolute(LB_POSITIONS[static_cast<int>(lbState)], 200);
-                    if (LB_POSITIONS[static_cast<int>(lbState)] - 10 <  averageLBPosition && averageLBPosition < LB_POSITIONS[static_cast<int>(lbState)] + 10) {
+                    robot::mechanisms::lbMotors.move_absolute(LB_POSITIONS[static_cast<int>(lbState)], 150);
+                    
+                    double targetPosition = LB_POSITIONS[static_cast<int>(lbState)];
+                    
+                    if (std::abs(averageLBPosition - targetPosition) < 15) {  
                         isAutoMoving = false;
+                        if (!isOutOfBounds) {
+                            robot::mechanisms::lbMotors.move_velocity(0);
+                        }
                     }
                 }
             }
-            std::cout<<"LB State: "<< static_cast<int>(lbState) << " | Auto Moving: " << isAutoMoving << std::endl;
-
+            
+            std::cout<< "Target velocity: " << robot::mechanisms::lbMotors.get_target_velocity() << std::endl;
+            std::cout<< "Current velocity: " << robot::mechanisms::lbMotors.get_actual_velocity() << std::endl;
+            std::cout<< "Motor 1 Power: " << robot::mechanisms::lbMotors.get_power(0) <<" watts" << std::endl;
+            std::cout<< "Motor 2 Power: " << robot::mechanisms::lbMotors.get_power(1) <<" watts" << std::endl;
+            std::cout<< "Average Position: " << averageLBPosition << std::endl;
+            std::cout<< "----------------------------------------" << std::endl;
+            std::cout<< std::endl;
         }
-
         static void update_intake() {
-            static bool r2Toggle = false;
-            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R2)) {
-                r2Toggle = !r2Toggle;
+            static bool intakeToggle = false;
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP)) {
+                intakeToggle = !intakeToggle;
             }
 
             const int intake_speed = robot::constants::INTAKE_SPEED;
             if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
-                robot::mechanisms::intakeMotor.move_velocity(intake_speed);
-            } else if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
                 robot::mechanisms::intakeMotor.move_velocity(-intake_speed);
-            } else if (r2Toggle) {
+            } else if (robot::masterController.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
                 robot::mechanisms::intakeMotor.move_velocity(intake_speed);
+            } else if (intakeToggle) {
+                robot::mechanisms::intakeMotor.move_velocity(-intake_speed);
             } else {
                 robot::mechanisms::intakeMotor.move_velocity(0);
             }
@@ -208,8 +225,7 @@ namespace controls {
             }
         }
     };
-}
-
+} 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
@@ -232,14 +248,16 @@ void initialize() {
             pros::lcd::print(0, "X: %f", robot::drivetrain::chassis.getPose().x); // x
             pros::lcd::print(1, "Y: %f", robot::drivetrain::chassis.getPose().y); // y
             pros::lcd::print(2, "Theta: %f", robot::drivetrain::chassis.getPose().theta); // heading
-            pros::lcd::print(3, "lbAngleAvg: %f", averageAngle);
-            pros::lcd::print(4, "lbBrakeMode: %d", robot::mechanisms::lbMotors.get_brake_mode());
-            pros::lcd::print(5, "lbLimitSwitch: %d", robot::mechanisms::lbLimitSwitch.get_value());
+            pros::lcd::print(3, "Hue: %f", robot::mechanisms::opticalSensor.get_hue());
+            // pros::lcd::print(3, "lbAngleAvg: %f", averageAngle);
+            // pros::lcd::print(4, "lbBrakeMode: %d", robot::mechanisms::lbMotors.get_brake_mode());
+            // pros::lcd::print(5, "lbLimitSwitch: %d", robot::mechanisms::lbLimitSwitch.get_value());
             // delay to save resources
             pros::delay(robot::constants::LOOP_DELAY);
         }
     });
 }
+
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
@@ -274,10 +292,10 @@ void competition_initialize() {}
  */
 void opcontrol() {
     while (true) {
-        // controls::Mechanisms::drive();
-        // controls::Mechanisms::update_hang();
-        // controls::Mechanisms::update_intake();
-        // controls::Mechanisms::update_clamp();
+        controls::Mechanisms::drive();
+        controls::Mechanisms::update_hang();
+        controls::Mechanisms::update_intake();      
+        controls::Mechanisms::update_clamp();
         controls::Mechanisms::update_LB();
         // ... other updates ...
         pros::delay(robot::constants::LOOP_DELAY);

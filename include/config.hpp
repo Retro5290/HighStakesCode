@@ -25,6 +25,7 @@ namespace robot {
         
         // Sensors/Digital inputs
         extern pros::ADIDigitalIn lbLimitSwitch;
+        extern pros::Optical opticalSensor;
     }
 
     // Constants 

@@ -7,8 +7,8 @@ namespace robot {
 
     namespace drivetrain {
         // Drive Train Motors
-        pros::MotorGroup leftMotors({-18, -19, -20}, pros::MotorGearset::blue); 
-        pros::MotorGroup rightMotors({17, 14, 15}, pros::MotorGearset::blue); 
+        pros::MotorGroup leftMotors({-8, -9, -10}, pros::MotorGearset::blue); //8 9 10
+        pros::MotorGroup rightMotors({1, 3, 4}, pros::MotorGearset::blue); // 134
 
         // Sensors
         pros::adi::Encoder verticalEncoder('E', 'F');
@@ -76,14 +76,15 @@ namespace robot {
 
     namespace mechanisms {
         pros::MotorGroup lbMotors({11, -20}, pros::MotorGearset::green);
-        pros::Motor intakeMotor(1, pros::MotorGearset::blue);
-
+        pros::Motor intakeMotor(7, pros::MotorGearset::blue);
+   
         // Digital I/O
         pros::ADIDigitalIn lbLimitSwitch('H');
+        pros::Optical opticalSensor(11);
 
         // Digital Out
-        pros::ADIDigitalOut hang('D');
+        pros::ADIDigitalOut hang('E');
         pros::ADIDigitalOut clamp('G');
-        pros::ADIDigitalOut doinker('C', true);
-    }
+        pros::ADIDigitalOut doinker('F');
+    }       
 }
