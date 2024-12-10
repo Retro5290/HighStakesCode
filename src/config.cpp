@@ -7,17 +7,17 @@ namespace robot {
 
     namespace drivetrain {
         // Drive Train Motors
-        pros::MotorGroup leftMotors({-8, -9, -10}, pros::MotorGearset::blue); //8 9 10
-        pros::MotorGroup rightMotors({1, 3, 4}, pros::MotorGearset::blue); // 134
+        pros::MotorGroup leftMotors({-16, -9, -10}, pros::MotorGearset::blue); //8 9 10    
+        pros::MotorGroup rightMotors({3, 4, 5}, pros::MotorGearset::blue); // 134
 
         // Sensors
-        pros::adi::Encoder verticalEncoder('E', 'F');
-        pros::Imu imu(16);
+        pros::Rotation verticalRotation(7);
+        pros::Imu imu(18);    
 
         // Tracking wheel setup
         lemlib::TrackingWheel verticalTrackingWheel(
-            &verticalEncoder,
-            lemlib::Omniwheel::NEW_275, 
+            &verticalRotation,
+            lemlib::Omniwheel::NEW_2, 
             0.0
         );
 
@@ -76,7 +76,7 @@ namespace robot {
 
     namespace mechanisms {
         pros::MotorGroup lbMotors({11, -20}, pros::MotorGearset::green);
-        pros::Motor intakeMotor(7, pros::MotorGearset::blue);
+        pros::Motor intakeMotor(1, pros::MotorGearset::blue);
    
         // Digital I/O
         pros::ADIDigitalIn lbLimitSwitch('H');
@@ -84,7 +84,7 @@ namespace robot {
 
         // Digital Out
         pros::ADIDigitalOut hang('E');
-        pros::ADIDigitalOut clamp('G');
+        pros::ADIDigitalOut clamp('G', true);
         pros::ADIDigitalOut doinker('F');
     }       
 }

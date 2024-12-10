@@ -27,7 +27,7 @@ namespace controls {
 
         static constexpr double LB_POSITIONS[] = {
             0.0,    // IDLE
-            -340.0,  // INTAKE
+            -250.0,  // INTAKE
             -750.0   // CLEAR
         };
 
@@ -167,14 +167,14 @@ namespace controls {
                         isAutoMoving = true;
                         break;
                     case LBToggleState::CLEAR:
-                        lbState = LBToggleState::CLEAR;
+                        lbState = LBToggleState::IDLE;
                         isAutoMoving = true;
                         break;
                     }
                 }
             }
 
-            // Auto Movement
+            // Auto Movement 
             if (isAutoMoving) {
                 if (lbState == LBToggleState::IDLE) {
                     robot::mechanisms::lbMotors.move_velocity(200);
@@ -183,7 +183,7 @@ namespace controls {
                     
                     double targetPosition = LB_POSITIONS[static_cast<int>(lbState)];
                     
-                    if (std::abs(averageLBPosition - targetPosition) < 15) {  
+                    if (std::abs(averageLBPosition - targetPosition) < 35) {  
                         isAutoMoving = false;
                         if (!isOutOfBounds) {
                             robot::mechanisms::lbMotors.move_velocity(0);
@@ -197,6 +197,7 @@ namespace controls {
             std::cout<< "Motor 1 Power: " << robot::mechanisms::lbMotors.get_power(0) <<" watts" << std::endl;
             std::cout<< "Motor 2 Power: " << robot::mechanisms::lbMotors.get_power(1) <<" watts" << std::endl;
             std::cout<< "Average Position: " << averageLBPosition << std::endl;
+            std::cout<< "isAutoMoving: " << isAutoMoving << std::endl;
             std::cout<< "----------------------------------------" << std::endl;
             std::cout<< std::endl;
         }
@@ -219,9 +220,16 @@ namespace controls {
         }
         static void update_clamp() {
             static bool clampState = false;
-            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L2)) {
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)) {
                 clampState = !clampState;
                 robot::mechanisms::clamp.set_value(clampState);
+            }
+        }
+        static void update_doinker() {
+            static bool doinkerState = false;
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
+                doinkerState = !doinkerState;
+                robot::mechanisms::doinker.set_value(doinkerState);
             }
         }
     };
@@ -234,7 +242,7 @@ namespace controls {
  */
 void initialize() {
     pros::lcd::initialize(); // initialize brain screen
-
+    
     robot::drivetrain::chassis.calibrate(); // calibrate sensors
     robot::mechanisms::lbMotors.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
     robot::drivetrain::chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
@@ -248,10 +256,17 @@ void initialize() {
             pros::lcd::print(0, "X: %f", robot::drivetrain::chassis.getPose().x); // x
             pros::lcd::print(1, "Y: %f", robot::drivetrain::chassis.getPose().y); // y
             pros::lcd::print(2, "Theta: %f", robot::drivetrain::chassis.getPose().theta); // heading
-            pros::lcd::print(3, "Hue: %f", robot::mechanisms::opticalSensor.get_hue());
-            // pros::lcd::print(3, "lbAngleAvg: %f", averageAngle);
-            // pros::lcd::print(4, "lbBrakeMode: %d", robot::mechanisms::lbMotors.get_brake_mode());
-            // pros::lcd::print(5, "lbLimitSwitch: %d", robot::mechanisms::lbLimitSwitch.get_value());
+            // if (robot::mechanisms::opticalSensor.get_hue() > 100 && robot::mechanisms::opticalSensor.get_hue() < 220) {
+            //     pros::lcd::print(3, "Color: Blue");
+            // } else if (robot::mechanisms::opticalSensor.get_hue() > 0 && robot::mechanisms::opticalSensor.get_hue() < 25) {
+            //     pros::lcd::print(3, "Color: Red");
+            // } else {
+            //     pros::lcd::print(3, "Color: None");
+            // }
+            // pros::lcd::print(4, "Hue: %f", robot::mechanisms::opticalSensor.get_hue());
+            pros::lcd::print(3, "lbAngleAvg: %f", averageAngle);
+            pros::lcd::print(4, "lbBrakeMode: %d", robot::mechanisms::lbMotors.get_brake_mode());
+            pros::lcd::print(5, "lbLimitSwitch: %d", robot::mechanisms::lbLimitSwitch.get_value());
             // delay to save resources
             pros::delay(robot::constants::LOOP_DELAY);
         }
@@ -297,6 +312,7 @@ void opcontrol() {
         controls::Mechanisms::update_intake();      
         controls::Mechanisms::update_clamp();
         controls::Mechanisms::update_LB();
+        controls::Mechanisms::update_doinker();
         // ... other updates ...
         pros::delay(robot::constants::LOOP_DELAY);
     }
