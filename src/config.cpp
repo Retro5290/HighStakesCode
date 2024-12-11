@@ -86,5 +86,6 @@ namespace robot {
         pros::ADIDigitalOut hang('E');
         pros::ADIDigitalOut clamp('G', true);
         pros::ADIDigitalOut doinker('F');
+        pros::ADIDigitalOut intake('B');
     }       
 }

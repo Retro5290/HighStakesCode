@@ -13,7 +13,7 @@
     UP: Intake Toggle
     B: Clamp
     Y: REVERSE DRIVE
-
+    X: BRAKE MODE
 */
 
 namespace controls {
@@ -53,7 +53,6 @@ namespace controls {
                     return currentVelocity + SLEW_RATE;
                 }
             }
-        
             // Speeding up or maintaining speed
             if (currentVelocity < targetVelocity) {
                 return std::min(currentVelocity + SLEW_RATE, targetVelocity);
@@ -68,6 +67,7 @@ namespace controls {
     public:      
         static void drive(){
             static bool reverseDrive = false;
+            static bool brakeMode = false;
 
             int x = robot::masterController.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
             int y = robot::masterController.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
@@ -77,6 +77,17 @@ namespace controls {
             if (reverseDrive) {
                 x = -x;
             }
+            if (robot::masterController.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {
+                brakeMode = !brakeMode;
+                if (brakeMode) {
+                    pros::delay(500);
+                    robot::drivetrain::chassis.setBrakeMode(pros::E_MOTOR_BRAKE_COAST);
+                } else {
+                    pros::delay(500);
+                    robot::drivetrain::chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+                }
+            }
+
             robot::drivetrain::chassis.arcade(x, y);
         }
         static void update_hang() {
@@ -306,6 +317,8 @@ void competition_initialize() {}
  * task, not resume it from where it left off.
  */
 void opcontrol() {
+    robot::drivetrain::chassis.setBrakeMode(pros::E_MOTOR_BRAKE_HOLD);
+
     while (true) {
         controls::Mechanisms::drive();
         controls::Mechanisms::update_hang();

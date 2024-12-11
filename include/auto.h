@@ -3,10 +3,10 @@
 
 // Autonomous routine declarations
 void skills_auto();
-void one_stake_red_auto();
-void two_stake_red_auto();
-void one_stake_blue_auto();
-void two_stake_blue_auto();
+void red_ring_auto();
+void red_stake_auto();
+void blue_ring_auto();
+void blue_stake_auto();
 void test_auto();
 
 

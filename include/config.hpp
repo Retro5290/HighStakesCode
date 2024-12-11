@@ -22,7 +22,7 @@ namespace robot {
         extern pros::ADIDigitalOut hang;
         extern pros::ADIDigitalOut clamp;
         extern pros::ADIDigitalOut doinker;
-        
+        extern pros::ADIDigitalOut intake;
         // Sensors/Digital inputs
         extern pros::ADIDigitalIn lbLimitSwitch;
         extern pros::Optical opticalSensor;
