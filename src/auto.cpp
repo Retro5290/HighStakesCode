@@ -159,7 +159,7 @@ void red_ring_auto() {
         robot::drivetrain::chassis.waitUntilDone();
 
         autosetting::run_intake(1000);
-        robot::mechanisms::intake.set_value(true);
+        robot::mechanisms::intake.set_value(true); // Lift intake
         pros::delay(700);
 
         // Score alliance stake
@@ -175,7 +175,7 @@ void red_ring_auto() {
         {.forwards = false, .minSpeed = 127, .earlyExitRange = 20}); // need tune
         robot::mechanisms::intake.set_value(false);
         robot::drivetrain::chassis.moveToPoint(-28.465, 20.327, 1000, {.forwards = false, .maxSpeed = 60});
-        robot::drivetrain::chassis.waitUntil(20); // need tune
+        robot::drivetrain::chassis.waitUntil(20); // need tune (time for the mogo to be in prime clamp position)
         robot::mechanisms::clamp.set_value(true);
         
         // Moving towards mid
@@ -216,7 +216,13 @@ void red_ring_auto() {
 
 void red_stake_auto() {
     try {
-
+        robot::drivetrain::chassis.setPose(-50.357, -59.494, 0);
+        robot::drivetrain::chassis.moveToPoint(-10.253, -50.582, 1000, {.forwards = true});
+        robot::mechanisms::doinker.set_value(true);
+        robot::drivetrain::chassis.moveToPoint(-24.977, -53.295, 1000, {.forwards = false});
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::mechanisms::doinker.set_value(false);
+        
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Two Stake Red Auto Error: %s", e.what());
     }

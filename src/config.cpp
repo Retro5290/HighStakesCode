@@ -80,6 +80,7 @@ namespace robot {
    
         // Digital I/O
         pros::ADIDigitalIn lbLimitSwitch('H');
+        pros::Rotation lbRotation(6);
         pros::Optical opticalSensor(11);
 
         // Digital Out
