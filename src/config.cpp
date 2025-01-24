@@ -7,12 +7,12 @@ namespace robot {
 
     namespace drivetrain {
         // Drive Train Motors
-        pros::MotorGroup leftMotors({-16, -9, -10}, pros::MotorGearset::blue); //8 9 10    
-        pros::MotorGroup rightMotors({3, 4, 5}, pros::MotorGearset::blue); // 134
+        pros::MotorGroup leftMotors({-18, -20, 19}, pros::MotorGearset::blue); // -18, -20, 19
+        pros::MotorGroup rightMotors({12, -13, 14}, pros::MotorGearset::blue); // 12, -13, 14
 
         // Sensors
-        pros::Rotation verticalRotation(7);
-        pros::Imu imu(18);    
+        pros::Rotation verticalRotation(-1);
+        pros::Imu imu(17);    
 
         // Tracking wheel setup
         lemlib::TrackingWheel verticalTrackingWheel(
@@ -22,7 +22,7 @@ namespace robot {
         );
 
         // Drivetrain configuration
-        lemlib::Drivetrain drivetrain(
+        lemlib::Drivetrain drivetrain( 
             &leftMotors,
             &rightMotors,
             11.4,
@@ -44,13 +44,13 @@ namespace robot {
         lemlib::ControllerSettings lateralController(
             10, // kP
             0,  // kI
-            3,  // kD
-            3,  // anti-windup
-            1,  // small error range
-            100,// small error timeout
-            3,  // large error range
-            500,// large error timeout
-            20  // slew rate
+            7,  // kD
+            3, // anti windup
+            1, // small error range, in inches
+            100, // small error range timeout, in milliseconds
+            3, // large error range, in inches
+            500, // large error range timeout, in milliseconds
+            20 // maximum acceleration (slew)
         );
         
         lemlib::ControllerSettings angularController(
@@ -75,17 +75,31 @@ namespace robot {
     }
 
     namespace mechanisms {
-        pros::MotorGroup lbMotors({11, -20}, pros::MotorGearset::green);
-        pros::Motor intakeMotor(1, pros::MotorGearset::blue);
+        pros::Motor lbMotor(10, pros::MotorGearset::red);
+        pros::Motor intakeMotor(9, pros::MotorGearset::blue);
    
         // Digital I/O
-        pros::ADIDigitalIn lbLimitSwitch('H');
+        pros::Rotation lbRotationSensor (15);
         pros::Optical opticalSensor(11);
 
         // Digital Out
-        pros::ADIDigitalOut hang('E');
-        pros::ADIDigitalOut clamp('G', true);
-        pros::ADIDigitalOut doinker('F');
+        pros::ADIDigitalOut hang('F');
+        pros::ADIDigitalOut clamp('H');
+        pros::ADIDigitalOut doinker('G');
         pros::ADIDigitalOut intake('B');
+    } 
+    namespace pid {
+        // PID gains account for conversion from centidegrees to RPM
+        // Kp units: RPM/centidegree
+        // Ki units: RPM/(centidegree*second)
+        // Kd units: RPM/(centidegree/second)
+
+        lemlib::PID lbPID (
+            0.01,    // Kp
+            0.0,    // Ki
+            0.0,    // Kd
+            0,      // windup range
+            false   // sign flip reset
+        );
     }       
 }

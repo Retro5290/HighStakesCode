@@ -13,7 +13,7 @@ enum class AutonomousMode {
 };
 
 // Current autonomous selection
-static AutonomousMode current_auto = AutonomousMode::BLUE_STAKE;
+static AutonomousMode current_auto = AutonomousMode::RED_STAKE;
 
 namespace autosetting {
     struct IntakeState {
@@ -119,7 +119,7 @@ namespace autosetting {
                 IntakeState::runSpeed = robot::constants::INTAKE_SPEED;
             }
             pros::delay(10);
-        }
+        } 
     }
   
     void run_intake(int runTime, uint32_t intakeSpeed = robot::constants::INTAKE_SPEED) {
@@ -131,6 +131,26 @@ namespace autosetting {
         IntakeState::ringDetected = false;
         IntakeState::ringEjectCooldown = 0;
         IntakeState::runSpeed = intakeSpeed;
+    }
+
+    void driveForward(double inches, float speed = 100, float timeout = 10000) {
+        // Get current position
+        lemlib::Pose current = robot::drivetrain::chassis.getPose();
+        
+        // Calculate target point in front of current position
+        // At 0 degrees, forward is positive Y
+        // At 90 degrees, forward is positive X
+        double angleRad = current.theta * M_PI / 180.0; // Convert degrees to radians
+        double targetX = current.x + inches * sin(angleRad); // use sin for X
+        double targetY = current.y + inches * cos(angleRad); // use cos for Y
+        
+        // Move to the calculated point
+        robot::drivetrain::chassis.moveToPose(targetX, targetY, current.theta, timeout, {
+            .forwards = (inches > 0),  // drive forwards if inches is positive
+            .maxSpeed = float(speed),    // adjust speed as needed
+        });
+        
+        robot::drivetrain::chassis.waitUntilDone();
     }
 }
 /*
@@ -153,56 +173,11 @@ void skills_auto() {
 
 void red_ring_auto() {
     try {
-        robot::drivetrain::chassis.setPose(-58.688, 12.771, 0);
-        robot::drivetrain::chassis.moveToPoint(-58.688, 0, 1000, {.forwards = false});
-        robot::drivetrain::chassis.turnToHeading(90, 1000);
+        robot::drivetrain::chassis.setPose(-59.044, 10.494, 90);
+        robot::drivetrain::chassis.moveToPoint(-59.044, 0, 1000);
+        robot::drivetrain::chassis.turnToHeading(180, 1000);
         robot::drivetrain::chassis.waitUntilDone();
-
-        autosetting::run_intake(1000);
-        robot::mechanisms::intake.set_value(true);
-        pros::delay(700);
-
-        // Score alliance stake
-        robot::drivetrain::chassis.moveToPoint(-52.682, 0, 1000, {.forwards = true});
-        autosetting::run_intake(1000);
-        pros::delay(500);
-        
-        // Swing to Mogo
-        robot::drivetrain::chassis.swingToPoint(-28.465, 20.327, lemlib::DriveSide::LEFT, 1000, 
-        {.forwards = false, .minSpeed = 127, .earlyExitRange = 20});
-
-        robot::drivetrain::chassis.moveToPose(-28.465, 20.327, 230, 2000, 
-        {.forwards = false, .minSpeed = 127, .earlyExitRange = 20}); // need tune
-        robot::mechanisms::intake.set_value(false);
-        robot::drivetrain::chassis.moveToPoint(-28.465, 20.327, 1000, {.forwards = false, .maxSpeed = 60});
-        robot::drivetrain::chassis.waitUntil(20); // need tune
         robot::mechanisms::clamp.set_value(true);
-        
-        // Moving towards mid
-        robot::drivetrain::chassis.turnToPoint(-10.64, 37.57, 1000, {.minSpeed = 127, .earlyExitRange = 20});
-        robot::drivetrain::chassis.moveToPose(-10.64, 37.57, 40, 2000, {.minSpeed = 127, .earlyExitRange = 22});
-        robot::drivetrain::chassis.waitUntilDone();
-        autosetting::run_intake(5000);
-        robot::drivetrain::chassis.moveToPose(-10.64, 37.57, 40, 1000, {.maxSpeed = 80}); // Score first ring
-        robot::drivetrain::chassis.moveToPose(-9.478, 42.995, 20, 1000, {.maxSpeed = 80});  // Score second ring
-        robot::drivetrain::chassis.moveToPoint(-15.096, 33.114, 1000, {.forwards = false}); // Fall back
-
-        // Starting third ring
-        robot::drivetrain::chassis.turnToPoint(-21.49, 43.189, 1000, {.minSpeed = 127, .earlyExitRange = 20});
-        autosetting::run_intake(2000);
-        robot::drivetrain::chassis.moveToPoint(-21.49, 43.189, 1500); // Score third ring
-
-        // Corner 
-        robot::drivetrain::chassis.turnToPoint(-57.913, 59.851, 1000, {.minSpeed = 127, .earlyExitRange = 20});
-        robot::drivetrain::chassis.moveToPoint(-57.913, 59.851, 1500);
-        robot::drivetrain::chassis.waitUntil(22); // need tune
-        autosetting::run_intake(2000);
-
-        // ------------------------------------- Mid Ladder -------------------------------------
-        robot::drivetrain::chassis.turnToPoint(-28.658, 8.122, 1000, {.minSpeed = 127, .earlyExitRange = 20});
-        robot::drivetrain::chassis.moveToPoint(-28.658, 8.122, 1500);
-        robot::drivetrain::chassis.waitUntilDone();
-        robot::mechanisms::doinker.set_value(true);
 
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Red Auto Error: %s", e.what());
@@ -213,10 +188,48 @@ void red_ring_auto() {
      270     90
          180
 */
-
+ASSET(RedStakeRush_txt)
+ASSET(RedStakeReturn_txt)
 void red_stake_auto() {
     try {
+        robot::drivetrain::chassis.setPose(-52.053, -59.611, 90);
+        robot::drivetrain::chassis.follow(RedStakeRush_txt, 10, 10000);
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::mechanisms::doinker.set_value(true);
+        pros::delay(500);
+        robot::drivetrain::chassis.follow(RedStakeReturn_txt, 10, 10000, false);
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::mechanisms::doinker.set_value(false);
+        robot::drivetrain::chassis.moveToPoint(-49.528, -60.194, 1000, {.forwards = false});
+        robot::drivetrain::chassis.turnToHeading(270, 1000);
+        robot::drivetrain::chassis.moveToPoint(-19.74, -60.194, 1500, {.forwards = false, .maxSpeed = 70});
+        robot::drivetrain::chassis.waitUntil(25);
+        robot::mechanisms::clamp.set_value(true);
+        robot::drivetrain::chassis.waitUntilDone();
+        autosetting::run_intake(2000);
+        robot::drivetrain::chassis.moveToPoint(-50.499, -59.028, 1500);
+        robot::drivetrain::chassis.turnToPoint(-29.137, -50.095, 1000, {.direction = AngularDirection::CCW_COUNTERCLOCKWISE});
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::mechanisms::clamp.set_value(false);
+        pros::delay(100);
 
+        // Day 2 stuff (need tuning)
+        robot::drivetrain::chassis.moveToPoint(-23.7, -47.182, 1500, {.minSpeed = 127, .earlyExitRange = 20});
+        robot::drivetrain::chassis.waitUntilDone();
+        autosetting::run_intake(900);
+        robot::drivetrain::chassis.moveToPoint(-23.7, -47.182, 1500, {.maxSpeed = 70});
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::drivetrain::chassis.turnToPoint(-22.923, -19.334, 1000, {.forwards = false});
+        robot::drivetrain::chassis.moveToPoint(-22.923, -19.334, 1500, {.forwards = false, .maxSpeed = 80});
+        robot::drivetrain::chassis.waitUntil(25);
+        robot::mechanisms::clamp.set_value(true);
+        robot::drivetrain::chassis.waitUntilDone();  
+        autosetting::run_intake(3000);
+        pros::delay(300);
+        robot::drivetrain::chassis.turnToHeading(20, 1000);
+        robot::drivetrain::chassis.moveToPoint(-21.564, -12.809, 1500);
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::mechanisms::doinker.set_value(true);
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Two Stake Red Auto Error: %s", e.what());
     }
@@ -251,6 +264,20 @@ void blue_stake_auto() {
          180
 */
 void test_auto() {
+    try {
+        robot::drivetrain::chassis.setPose(0, 0, 90);
+
+        // Tune Lateral PID
+        robot::drivetrain::chassis.turnToHeading(180, 1000);
+
+        // Tune Angular PID
+        /*
+        robot::drivetrain::chassis.turnToHeading(90, 1000);
+        robot::drivetrain::chassis.waitUntilDone();
+        */
+    } catch (const std::exception& e) {
+        pros::lcd::print(0, "Test Auto Error: %s", e.what());
+    }
 
 }
 

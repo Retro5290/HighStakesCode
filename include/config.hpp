@@ -15,7 +15,7 @@ namespace robot {
     }
 
     namespace mechanisms {
-        extern pros::MotorGroup lbMotors;
+        extern pros::Motor lbMotor;
         extern pros::Motor intakeMotor;
         
         // Pneumatics/Digital outputs
@@ -23,15 +23,41 @@ namespace robot {
         extern pros::ADIDigitalOut clamp;
         extern pros::ADIDigitalOut doinker;
         extern pros::ADIDigitalOut intake;
+
         // Sensors/Digital inputs
-        extern pros::ADIDigitalIn lbLimitSwitch;
+        extern pros::Rotation lbRotationSensor;
         extern pros::Optical opticalSensor;
+    }
+
+    namespace pid {
+        extern lemlib::PID lbPID;
     }
 
     // Constants 
     namespace constants {
         constexpr int INTAKE_SPEED = 600;
         constexpr int LOOP_DELAY = 25;
+    }
+
+    namespace lb {
+        // LB States
+        enum class LBToggleState {
+            IDLE,
+            INTAKE,
+            CLEAR
+        };
+
+        // LB Constants
+        constexpr double LB_POSITIONS[] = {
+            0.0,    // IDLE
+            4200.0, // INTAKE
+            6000.0  // CLEAR
+        };
+
+        // LB Functions
+        void moveTo(LBToggleState state);
+        void waitUntilSettled();
+        LBToggleState getCurrentState();
     }
 }
 
