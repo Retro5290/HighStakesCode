@@ -19,7 +19,7 @@ namespace robot {
             &verticalRotation,
             lemlib::Omniwheel::NEW_2, 
             0.0
-        );
+        ); 
 
         // Drivetrain configuration
         lemlib::Drivetrain drivetrain( 

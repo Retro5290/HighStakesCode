@@ -11,9 +11,9 @@ enum class AutonomousMode {
     BLUE_STAKE,      
     TEST
 };
-
+  
 // Current autonomous selection
-static AutonomousMode current_auto = AutonomousMode::RED_STAKE;
+static AutonomousMode current_auto = AutonomousMode::SKILLS;
 
 namespace autosetting {
     struct IntakeState {
@@ -32,6 +32,12 @@ namespace autosetting {
         static uint32_t runSpeed;
     };
 
+    struct LBState {
+        static double targetPosition;
+        static double runSpeed;
+        static bool isRunning;
+    };
+
     // Tunable constants
     constexpr bool ENABLE_COLOR_SORT = false;  // Set to true to enable color sorting/ejection
     constexpr int EJECT_TIME = 500;   // Time to stop intake for ejection (ms)
@@ -48,58 +54,52 @@ namespace autosetting {
     bool IntakeState::ringDetected = false;
     uint32_t IntakeState::runSpeed = robot::constants::INTAKE_SPEED;
 
-    // Run intake state variables
     bool IntakeState::shouldRun = false;
     uint32_t IntakeState::startTime = 0;
     uint32_t IntakeState::duration = 0;
+
+    // LB state variables
+    double LBState::targetPosition = 0;
+    double LBState::runSpeed = 100.0;
+    bool LBState::isRunning = false;
 
     void intake_task_fn(void* param) {
         while (pros::competition::is_autonomous()) {
             uint32_t currentTime = pros::millis();
             
-            // Check if run intake is called
             if (IntakeState::shouldRun && 
                 (currentTime - IntakeState::startTime < IntakeState::duration)) {
                 
-                // Only check for color sorting if enabled
                 if (ENABLE_COLOR_SORT) {
                     if (IntakeState::isEjecting) {
                         if (currentTime - IntakeState::ejectStartTime < EJECT_TIME) {
-                            // During eject time, stop the intake
                             robot::mechanisms::intakeMotor.move_velocity(0);
                         } else {
-                            // Eject time finished
                             IntakeState::isEjecting = false;
                             IntakeState::ringDetected = false;
                         }
                     } else if (IntakeState::ringDetected) {
-                        // Ring detected but waiting for it to reach top
                         if (currentTime - IntakeState::ringDetectedTime >= RING_TRAVEL_TIME) {
-                            // Ring should be at top now, start ejection
                             IntakeState::isEjecting = true;    
                             IntakeState::ejectStartTime = currentTime;
                             IntakeState::ringDetected = false;
                         }
                         robot::mechanisms::intakeMotor.move_velocity(-IntakeState::runSpeed);
                     } else {
-                        // Normal operation
                         robot::mechanisms::intakeMotor.move_velocity(-IntakeState::runSpeed);
 
-                        // Check for wrong color ring
-                        if (IntakeState::targetColor) { // Looking for red rings
+                        if (IntakeState::targetColor) { 
                             if (robot::mechanisms::opticalSensor.get_hue() >= 0 && 
                                 robot::mechanisms::opticalSensor.get_hue() <= 25 &&
                                 currentTime >= IntakeState::ringEjectCooldown) {
-                                // Red ring detected, start travel time countdown
                                 IntakeState::ringDetected = true;
                                 IntakeState::ringDetectedTime = currentTime;
                                 IntakeState::ringEjectCooldown = currentTime + RING_EJECT_COOLDOWN;
                             }
-                        } else { // Looking for blue rings
+                        } else { 
                             if (robot::mechanisms::opticalSensor.get_hue() >= 100 && 
                                 robot::mechanisms::opticalSensor.get_hue() <= 220 &&
                                 currentTime >= IntakeState::ringEjectCooldown) {
-                                // Blue ring detected, start travel time countdown
                                 IntakeState::ringDetected = true;
                                 IntakeState::ringDetectedTime = currentTime;
                                 IntakeState::ringEjectCooldown = currentTime + RING_EJECT_COOLDOWN;
@@ -107,7 +107,6 @@ namespace autosetting {
                         }
                     }
                 } else {
-                    // Simply run intake when color sort is disabled
                     robot::mechanisms::intakeMotor.move_velocity(-IntakeState::runSpeed);
                 }
             } else {
@@ -133,24 +132,36 @@ namespace autosetting {
         IntakeState::runSpeed = intakeSpeed;
     }
 
-    void driveForward(double inches, float speed = 100, float timeout = 10000) {
-        // Get current position
-        lemlib::Pose current = robot::drivetrain::chassis.getPose();
-        
-        // Calculate target point in front of current position
-        // At 0 degrees, forward is positive Y
-        // At 90 degrees, forward is positive X
-        double angleRad = current.theta * M_PI / 180.0; // Convert degrees to radians
-        double targetX = current.x + inches * sin(angleRad); // use sin for X
-        double targetY = current.y + inches * cos(angleRad); // use cos for Y
-        
-        // Move to the calculated point
-        robot::drivetrain::chassis.moveToPose(targetX, targetY, current.theta, timeout, {
-            .forwards = (inches > 0),  // drive forwards if inches is positive
-            .maxSpeed = float(speed),    // adjust speed as needed
-        });
-        
-        robot::drivetrain::chassis.waitUntilDone();
+    void lb_task_fn(void* param) {
+        while (pros::competition::is_autonomous()) {
+            double currentPosition = robot::mechanisms::lbRotationSensor.get_position();
+            double error = LBState::targetPosition - currentPosition;
+            
+            if (std::abs(error) < 100) {
+                LBState::isRunning = false;
+                robot::mechanisms::lbMotor.move_velocity(0);
+                if (LBState::targetPosition == 0) {
+                    robot::mechanisms::lbRotationSensor.reset_position();
+                }
+            } else {
+                LBState::isRunning = true;
+                double pidOutput = robot::pid::lbPID.update(error);
+                double velocityCommand = std::clamp(pidOutput, -LBState::runSpeed, LBState::runSpeed);
+                robot::mechanisms::lbMotor.move_velocity(velocityCommand);
+            }
+            pros::delay(10);
+        }
+    }
+
+    void run_LB(double angle, double speed = 100.0) {
+        LBState::targetPosition = angle;
+        LBState::runSpeed = speed;
+        LBState::isRunning = true;
+        robot::pid::lbPID.reset();
+    }
+
+    bool isLBRunning() {
+        return LBState::isRunning;
     }
 }
 /*
@@ -160,7 +171,47 @@ namespace autosetting {
 */
 void skills_auto() {
     try {
+        robot::drivetrain::chassis.setPose(-55.635, 0, 270);
+        robot::mechanisms::lbRotationSensor.set_position(4800);
         
+        autosetting::run_LB(25000);
+        pros::delay(600);
+
+        robot::drivetrain::chassis.moveToPoint(-47, 0, 1000, {.forwards = false});
+        robot::drivetrain::chassis.waitUntilDone();
+
+        autosetting::run_LB(0);
+        robot::drivetrain::chassis.turnToHeading(180, 1000);
+        robot::drivetrain::chassis.moveToPoint(-47, 26.03, 1000, {.forwards = false, .maxSpeed = 70});
+        robot::drivetrain::chassis.waitUntil(21);
+        robot::mechanisms::clamp.set_value(true);
+        robot::drivetrain::chassis.waitUntilDone();
+
+        robot::mechanisms::lbMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+        robot::mechanisms::lbMotor.move_velocity(0);
+
+        robot::drivetrain::chassis.turnToPoint(-20.787, 23.312, 1000);
+        autosetting::run_intake(20000);
+        robot::drivetrain::chassis.moveToPoint(-20.787, 23.312, 1000, {.maxSpeed = 80});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(1.157, 59.821, 1000);
+        robot::drivetrain::chassis.moveToPoint(1.157, 59.821, 1500, {.maxSpeed = 80});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(-25.253, 46.421, 1000);
+        robot::drivetrain::chassis.moveToPoint(-25.253, 46.421, 1500, {.maxSpeed = 80});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(-61.763, 47.586, 1000);
+        robot::drivetrain::chassis.moveToPoint(-61.763, 47.586, 3000, {.maxSpeed = 40});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(-45.45, 60.209, 1000);
+        robot::drivetrain::chassis.moveToPoint(-45.45, 60.209, 1500, {.maxSpeed = 80});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(-59.044, 61.18, 1000, {.forwards = false});
+        robot::drivetrain::chassis.moveToPoint(-59.044, 61.18, 1500, {.forwards = false, .maxSpeed = 80});
+        pros::delay(200);
+        robot::mechanisms::clamp.set_value(false);
+
+
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Skills Auto Error: %s", e.what());
     };
@@ -171,13 +222,46 @@ void skills_auto() {
          180
 */
 
+ASSET(RedRing1_txt);
 void red_ring_auto() {
     try {
-        robot::drivetrain::chassis.setPose(-59.044, 10.494, 90);
-        robot::drivetrain::chassis.moveToPoint(-59.044, 0, 1000);
-        robot::drivetrain::chassis.turnToHeading(180, 1000);
+        robot::mechanisms::lbRotationSensor.set_position(4800);
+        robot::drivetrain::chassis.setPose(-54.383, 16.126, 180); 
+        robot::drivetrain::chassis.swingToHeading(240, lemlib::DriveSide::RIGHT, 800);
         robot::drivetrain::chassis.waitUntilDone();
+        autosetting::run_LB(25000);
+        pros::delay(600);
+
+        
+        robot::drivetrain::chassis.turnToPoint(-18.068, 25.448, 300, {.forwards = false});
+
+        robot::drivetrain::chassis.moveToPoint(-18.068, 25.448, 2000, {.forwards = false, .minSpeed = 127, .earlyExitRange = 35});
+        pros::delay(200);
+        autosetting::run_LB(0);
+
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::mechanisms::lbMotor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+        robot::mechanisms::lbMotor.move_velocity(0);
+
+        robot::drivetrain::chassis.moveToPoint(-19.01, 24.865, 2000, {.forwards = false, .maxSpeed = 70});
+        robot::drivetrain::chassis.waitUntil(30);
         robot::mechanisms::clamp.set_value(true);
+        robot::mechanisms::lbRotationSensor.set_position(0);
+        robot::drivetrain::chassis.turnToHeading(330, 1000);
+        autosetting::run_intake(7000);
+        robot::drivetrain::chassis.follow(RedRing1_txt, 8, 2500);
+        pros::delay(2000);
+
+        robot::drivetrain::chassis.moveToPoint(-29.914, 48.946, 1000, {.forwards = false});
+        robot::drivetrain::chassis.turnToPoint(-45.838, 13.213, 1000);
+        robot::drivetrain::chassis.moveToPoint(-45.838, 13.213, 2000);
+        robot::drivetrain::chassis.waitUntilDone();
+        // robot::mechanisms::doinker.set_value(true);
+        // pros::delay(300);
+        // robot::drivetrain::chassis.moveToPoint(-37.876, 31.079, 2000, {.forwards = false});
+
+        
+
 
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Red Auto Error: %s", e.what());
@@ -196,7 +280,7 @@ void red_stake_auto() {
         robot::drivetrain::chassis.follow(RedStakeRush_txt, 10, 10000);
         robot::drivetrain::chassis.waitUntilDone();
         robot::mechanisms::doinker.set_value(true);
-        pros::delay(500);
+        pros::delay(100);
         robot::drivetrain::chassis.follow(RedStakeReturn_txt, 10, 10000, false);
         robot::drivetrain::chassis.waitUntilDone();
         robot::mechanisms::doinker.set_value(false);
@@ -214,10 +298,10 @@ void red_stake_auto() {
         pros::delay(100);
 
         // Day 2 stuff (need tuning)
-        robot::drivetrain::chassis.moveToPoint(-23.7, -47.182, 1500, {.minSpeed = 127, .earlyExitRange = 20});
+        robot::drivetrain::chassis.moveToPoint(-25.253, -47.182, 1500, {.minSpeed = 127, .earlyExitRange = 20});
         robot::drivetrain::chassis.waitUntilDone();
         autosetting::run_intake(900);
-        robot::drivetrain::chassis.moveToPoint(-23.7, -47.182, 1500, {.maxSpeed = 70});
+        robot::drivetrain::chassis.moveToPoint(-25.253, -47.182, 1500, {.maxSpeed = 70});
         robot::drivetrain::chassis.waitUntilDone();
         robot::drivetrain::chassis.turnToPoint(-22.923, -19.334, 1000, {.forwards = false});
         robot::drivetrain::chassis.moveToPoint(-22.923, -19.334, 1500, {.forwards = false, .maxSpeed = 80});
@@ -234,13 +318,14 @@ void red_stake_auto() {
         pros::lcd::print(0, "Two Stake Red Auto Error: %s", e.what());
     }
 }
-/*
+/* 
           0
      270     90
          180
 */
 void blue_ring_auto() {
     try {
+        
 
     } catch (const std::exception& e) {
         pros::lcd::print(0, "One Stake Blue Auto Error: %s", e.what());
@@ -266,15 +351,10 @@ void blue_stake_auto() {
 void test_auto() {
     try {
         robot::drivetrain::chassis.setPose(0, 0, 90);
+        autosetting::run_LB(1000);
 
-        // Tune Lateral PID
-        robot::drivetrain::chassis.turnToHeading(180, 1000);
 
-        // Tune Angular PID
-        /*
-        robot::drivetrain::chassis.turnToHeading(90, 1000);
-        robot::drivetrain::chassis.waitUntilDone();
-        */
+
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Test Auto Error: %s", e.what());
     }
@@ -286,6 +366,7 @@ void autonomous() {
     std::cout << "Running Auto" << std::endl;
     // Create task at start of autonomous
     pros::Task intake_task(autosetting::intake_task_fn, nullptr, "Intake Task");
+    pros::Task lb_task(autosetting::lb_task_fn, nullptr, "LB Task");
     
     // Your existing autonomous code
     switch (current_auto) {

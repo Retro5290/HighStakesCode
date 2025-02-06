@@ -27,7 +27,7 @@ namespace controls {
 
         static constexpr double LB_POSITIONS[] = {
             0.0,    // IDLE
-            4200.0,  // INTAKE
+            4800.0,  // INTAKE    
             6000.0   // CLEAR
         };
 
@@ -144,7 +144,7 @@ namespace controls {
                 // Apply the output
                 robot::mechanisms::lbMotor.move_velocity(velocityCommand);
                 
-                if (std::abs(error) < 10) {  
+                if (std::abs(error) < 100) {  
                     isAutoMoving = false;
                     robot::mechanisms::lbMotor.move_velocity(0);
                     if (lbState == LBToggleState::IDLE) {
@@ -242,9 +242,9 @@ void initialize() {
         while (true) {
 
             // // Debugging Printing Area
-            // pros::lcd::print(0, "Chassis Position: x: %f", robot::drivetrain::chassis.getPose().x);
-            // pros::lcd::print(1, "Chassis Position: y: %f", robot::drivetrain::chassis.getPose().y);
-            // pros::lcd::print(2, "Chassis Position: heading : %f", robot::drivetrain::chassis.getPose().theta);
+            pros::lcd::print(0, "Chassis Position: x: %f", robot::drivetrain::chassis.getPose().x);
+            pros::lcd::print(1, "Chassis Position: y: %f", robot::drivetrain::chassis.getPose().y);
+            pros::lcd::print(2, "Chassis Position: heading : %f", robot::drivetrain::chassis.getPose().theta);
             pros::lcd::print(3, "LB Position: %d", robot::mechanisms::lbRotationSensor.get_position());
 
             pros::delay(robot::constants::LOOP_DELAY);
