@@ -31,8 +31,8 @@ namespace controls {
             6000.0   // CLEAR
         };
 
-        static constexpr int LB_POSITION_LOSS_BOUNDARY = 5000;
-        static constexpr int LB_FINETUNE_BOUNDARY = 4500;
+        static constexpr int LB_POSITION_LOSS_BOUNDARY = 6000;
+        static constexpr int LB_FINETUNE_BOUNDARY = 5200;
 
         static constexpr double MIN_VELOCITY = 50;  
         static constexpr double SLEW_RATE = 100;
