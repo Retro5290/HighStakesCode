@@ -572,6 +572,7 @@ void autonomous() {
         case AutonomousMode::RED_RING:
             red_ring_auto();
             break;
+            
         case AutonomousMode::RED_STAKE:
             red_stake_auto();
             break;
