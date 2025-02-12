@@ -569,6 +569,11 @@ void autonomous() {
         case AutonomousMode::SKILLS:
             skills_auto();
             break;
+
+
+
+
+            
         case AutonomousMode::RED_RING:
             red_ring_auto();
             break;
