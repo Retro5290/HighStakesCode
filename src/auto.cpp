@@ -690,6 +690,10 @@ void liam_skills() {
         robot::drivetrain::chassis.moveToPoint(point5x, point5y, 1500, {.forwards = false, .maxSpeed = 70});
         pros::delay(200);
         robot::mechanisms::clamp.set_value(false);
+        //Liam Code
+        pros::delay(500);
+        robot::drivetrain::chassis.turnToPoint(0, 57.96, 1000, {.forwards = true});
+        robot::drivetrain::chassis.moveToPoint(0, 57.69, 1500, {.forwards = true, .maxSpeed = 150});
 
         // Q2 ---
         /*
