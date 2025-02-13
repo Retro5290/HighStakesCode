@@ -10,11 +10,12 @@ enum class AutonomousMode {
     BLUE_RING,
     BLUE_STAKE,      
     TEST,
-    liam_skills
+    liam_skills,
+    skills_auto
 };
   
 // Current autonomous selection
-static AutonomousMode current_auto = AutonomousMode::liam_skills;
+static AutonomousMode current_auto = AutonomousMode::skills_auto;
 
 namespace autosetting {
     struct IntakeState {
