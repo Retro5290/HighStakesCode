@@ -595,8 +595,7 @@ void autonomous() {
 }
 
 void liam_skills() {
-    //here
-// Q1
+        // Q1
     // Ring 1
     float point1x = -21;
     float point1y = 26.03;
@@ -722,8 +721,7 @@ void liam_skills() {
         robot::mechanisms::clamp.set_value(false);
         */
         // Q3
-
-
-    //here
-
-    ;}
+    } catch (const std::exception& e) {
+        pros::lcd::print(0, "Skills Auto Error: %s", e.what());
+    };
+}
