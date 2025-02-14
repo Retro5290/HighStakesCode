@@ -592,6 +592,7 @@ void autonomous() {
 }
 
 void liam_skills() {
+    ASSET(rings_txt);
     // Q1
     // Ring 1
     float point1x = -21;
@@ -701,9 +702,13 @@ void liam_skills() {
         robot::drivetrain::chassis.moveToPoint(point8x, point8y, 1000, {.minSpeed = 120, .earlyExitRange = 20});
         robot::drivetrain::chassis.moveToPoint(point8x, point8y, 1000, {.maxSpeed = 70});
         pros::delay(200);
+        //test stuff - ring 1 to 2
+        robot::drivetrain::chassis.follow(rings_txt, 10, 10000);
+        /*idfk kms I hate everything
         robot::drivetrain::chassis.turnToPoint(point9x, point9y, 1000);
         robot::drivetrain::chassis.moveToPoint(point9x, point9y, 1500, {.minSpeed = 127, .earlyExitRange = 20});  
         robot::drivetrain::chassis.moveToPoint(point9x, point9y, 1500, {.maxSpeed = 70});
+        */
         pros::delay(200);
         robot::drivetrain::chassis.turnToPoint(point10x, point10y, 1000);
         robot::drivetrain::chassis.moveToPoint(point10x, point10y, 4000, {.maxSpeed = 50});
