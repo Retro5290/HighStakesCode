@@ -630,33 +630,6 @@ void liam_skills() {
 
     // Q2
     // Stake 2 (part 1)
-<<<<<<< HEAD
-    float point6x = -46.809;
-    float point6y = 34.381;
-
-    // Stake 2 (part 2)
-    float point7x = -47.198;
-    float point7y = -26.015;
-
-    // Ring 1
-    float point8x = -23.506;
-    float point8y = -26.419;
-
-    // Ring 2
-    float point9x = 29.899;
-    float point9y = -50.305;
-
-    // Ring 3, 4, 5
-    float point10x = -60.015;
-    float point10y = -49.917;
-
-    // Ring 6
-    float point11x = -45.45;
-    float point11y = -60.209;
-
-    // Corner
-    float point12x = -61.763;
-=======
     float point6x = -48.809;
     float point6y = 34.381;
 
@@ -682,13 +655,11 @@ void liam_skills() {
 
     // Corner
     float point12x = -64.763;
->>>>>>> c6f96015ecaf8884782d51ad20585e033abc083a
     float point12y = -62.928;
 
 
     try {
         robot::drivetrain::chassis.setPose(-55.635, 0, 270);
-<<<<<<< HEAD
         robot::mechanisms::lbRotationSensor.set_position(0);
         /* lb score on alliance stake (currently too big)
         autosetting::run_LB(25000);
@@ -697,16 +668,6 @@ void liam_skills() {
         robot::drivetrain::chassis.moveToPoint(-47, 0, 1000, {.forwards = false});
         robot::drivetrain::chassis.waitUntilDone();
        // autosetting::run_LB(0);
-=======
-        robot::mechanisms::lbRotationSensor.set_position(4800);
-        
-        autosetting::run_LB(25000);
-        pros::delay(600);
-
-        robot::drivetrain::chassis.moveToPoint(-47, 0, 1000, {.forwards = false});
-        robot::drivetrain::chassis.waitUntilDone();
-        autosetting::run_LB(0);
->>>>>>> c6f96015ecaf8884782d51ad20585e033abc083a
 
 
         robot::drivetrain::chassis.turnToHeading(180, 1000);
@@ -736,15 +697,8 @@ void liam_skills() {
         robot::drivetrain::chassis.turnToPoint(point5x, point5y, 1000, {.forwards = false});
         robot::drivetrain::chassis.moveToPoint(point5x, point5y, 1500, {.forwards = false, .maxSpeed = 70});
         pros::delay(200);
-<<<<<<< HEAD
         robot::mechanisms::clamp.set_value(false); 
-    } catch (const std::exception& e) {
-        pros::lcd::print(0, "Liam skills auto error: %s", e.what());
-    }
-}
-=======
-        robot::mechanisms::clamp.set_value(false);
-        //Liam Code---------------------------------------
+                //Liam Code---------------------------------------
        /*
         //go to wall stake
         pros::delay(500);
@@ -803,7 +757,6 @@ void liam_skills() {
         
         // Q3
     } catch (const std::exception& e) {
-        pros::lcd::print(0, "Skills Auto Error: %s", e.what());
-    };
+        pros::lcd::print(0, "Liam skills auto error: %s", e.what());
+    }
 }
->>>>>>> c6f96015ecaf8884782d51ad20585e033abc083a
