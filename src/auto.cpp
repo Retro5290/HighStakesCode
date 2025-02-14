@@ -630,8 +630,8 @@ void liam_skills() {
 
     // Q2
     // Stake 2 (part 1)
-    float point6x = -48.809;
-    float point6y = 34.381;
+    float point6x = -47.285;
+    float point6y = 34.881;
 
     // Stake 2 (part 2)
     float point7x = -44.198;    
