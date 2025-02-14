@@ -10,11 +10,20 @@ enum class AutonomousMode {
     BLUE_RING,
     BLUE_STAKE,      
     TEST,
+<<<<<<< HEAD
     liam_skills
 };
   
 // Current autonomous selection
 static AutonomousMode current_auto = AutonomousMode::liam_skills;
+=======
+    LIAM_SKILLS,
+    SKILLS_AUTO
+};
+  
+// Current autonomous selection
+static AutonomousMode current_auto = AutonomousMode::LIAM_SKILLS;
+>>>>>>> c6f96015ecaf8884782d51ad20585e033abc083a
 
 namespace autosetting {
     struct IntakeState {
@@ -591,6 +600,9 @@ void autonomous() {
         case AutonomousMode::TEST:
             test_auto();
             break;
+        case AutonomousMode::LIAM_SKILLS:
+            liam_skills();
+            break;
     }
 }
 
@@ -618,6 +630,7 @@ void liam_skills() {
 
     // Q2
     // Stake 2 (part 1)
+<<<<<<< HEAD
     float point6x = -46.809;
     float point6y = 34.381;
 
@@ -643,11 +656,39 @@ void liam_skills() {
 
     // Corner
     float point12x = -61.763;
+=======
+    float point6x = -48.809;
+    float point6y = 34.381;
+
+    // Stake 2 (part 2)
+    float point7x = -44.198;    
+    float point7y = -25.015;
+
+    // Ring 1
+    float point8x = -23.506;
+    float point8y = -24.419;
+
+    // Ring 2
+    float point9x = 29.899;
+    float point9y = -47.305;
+
+    // Ring 3, 4, 5
+    float point10x = -60.015;
+    float point10y = -48.917;
+
+    // Ring 6
+    float point11x = -48.45;
+    float point11y = -55.209;
+
+    // Corner
+    float point12x = -64.763;
+>>>>>>> c6f96015ecaf8884782d51ad20585e033abc083a
     float point12y = -62.928;
 
 
     try {
         robot::drivetrain::chassis.setPose(-55.635, 0, 270);
+<<<<<<< HEAD
         robot::mechanisms::lbRotationSensor.set_position(0);
         /* lb score on alliance stake (currently too big)
         autosetting::run_LB(25000);
@@ -656,6 +697,16 @@ void liam_skills() {
         robot::drivetrain::chassis.moveToPoint(-47, 0, 1000, {.forwards = false});
         robot::drivetrain::chassis.waitUntilDone();
        // autosetting::run_LB(0);
+=======
+        robot::mechanisms::lbRotationSensor.set_position(4800);
+        
+        autosetting::run_LB(25000);
+        pros::delay(600);
+
+        robot::drivetrain::chassis.moveToPoint(-47, 0, 1000, {.forwards = false});
+        robot::drivetrain::chassis.waitUntilDone();
+        autosetting::run_LB(0);
+>>>>>>> c6f96015ecaf8884782d51ad20585e033abc083a
 
 
         robot::drivetrain::chassis.turnToHeading(180, 1000);
@@ -685,8 +736,74 @@ void liam_skills() {
         robot::drivetrain::chassis.turnToPoint(point5x, point5y, 1000, {.forwards = false});
         robot::drivetrain::chassis.moveToPoint(point5x, point5y, 1500, {.forwards = false, .maxSpeed = 70});
         pros::delay(200);
+<<<<<<< HEAD
         robot::mechanisms::clamp.set_value(false); 
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Liam skills auto error: %s", e.what());
     }
 }
+=======
+        robot::mechanisms::clamp.set_value(false);
+        //Liam Code---------------------------------------
+       /*
+        //go to wall stake
+        pros::delay(500);
+        robot::drivetrain::chassis.turnToPoint(0, 57.96, 1000, {.forwards = true});
+        autosetting::run_LB(4800);
+        robot::drivetrain::chassis.moveToPoint(-3, 55.69, 1500, {.forwards = true, .maxSpeed = 150});
+        autosetting::run_intake(5000);
+        robot::drivetrain::chassis.waitUntilDone(); 
+        robot::drivetrain::chassis.turnToHeading(0, 1000);
+        robot::drivetrain::chassis.waitUntilDone();
+        robot::drivetrain::chassis.moveToPoint(0, 67.69, 1500, {.forwards = true, .maxSpeed = 150});
+        robot::drivetrain::chassis.waitUntilDone();
+        //wall stake
+        autosetting::run_LB(18000);
+        pros::delay(1500);
+        autosetting::run_LB(0);
+        robot::drivetrain::chassis.moveToPoint(0, 38.69, 1500, {.forwards = false, .maxSpeed = 150});
+*/
+
+        // Q2 ---
+        
+        robot::drivetrain::chassis.turnToPoint(point6x, point6y, 800, {.minSpeed = 127, .earlyExitRange = 20});
+        robot::drivetrain::chassis.moveToPoint(point6x, point6y, 1500);
+        
+        robot::drivetrain::chassis.turnToPoint(point7x-12, point7y, 700, {.forwards = false});
+        robot::drivetrain::chassis.moveToPoint(point7x-12, point7y, 2000, {.forwards = false, .minSpeed = 127, .earlyExitRange = 22});
+        robot::drivetrain::chassis.moveToPose(point7x-12, point7y, 0, 1500, {.forwards = false, .maxSpeed = 60});
+
+        robot::drivetrain::chassis.turnToPoint(point7x, point7y, 700, {.forwards = false});
+        robot::drivetrain::chassis.moveToPoint(point7x, point7y, 2000, {.forwards = false, .minSpeed = 127, .earlyExitRange = 22});
+        robot::drivetrain::chassis.moveToPose(point7x, point7y, 0, 1500, {.forwards = false, .maxSpeed = 60});
+        robot::drivetrain::chassis.waitUntil(53); // travles total 60.396 in (12)
+        robot::mechanisms::clamp.set_value(true);
+        
+        robot::drivetrain::chassis.turnToPoint(point8x, point8y, 1000); 
+        robot::drivetrain::chassis.waitUntilDone();
+        autosetting::run_intake(20000);
+        robot::drivetrain::chassis.moveToPoint(point8x, point8y, 1000, {.minSpeed = 120, .earlyExitRange = 20});
+        robot::drivetrain::chassis.moveToPoint(point8x, point8y, 1000, {.maxSpeed = 70});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(point9x, point9y, 1000);
+        robot::drivetrain::chassis.moveToPoint(point9x, point9y, 1500, {.minSpeed = 127, .earlyExitRange = 20});  
+        robot::drivetrain::chassis.moveToPoint(point9x, point9y, 1500, {.maxSpeed = 70});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(point10x, point10y, 1000);
+        robot::drivetrain::chassis.moveToPoint(point10x, point10y, 4000, {.maxSpeed = 50});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(point11x, point11y, 1000);
+        robot::drivetrain::chassis.moveToPoint(point11x, point11y, 1500, {.minSpeed = 127, .earlyExitRange = 20});
+        robot::drivetrain::chassis.moveToPoint(point11x, point11y, 1500, {.maxSpeed = 70});
+        pros::delay(200);
+        robot::drivetrain::chassis.turnToPoint(point12x, point12y, 1000, {.forwards = false});
+        robot::drivetrain::chassis.moveToPoint(point12x, point12y, 1500, {.forwards = false, .maxSpeed = 70});
+        pros::delay(200);
+        robot::mechanisms::clamp.set_value(false);
+        
+        // Q3
+    } catch (const std::exception& e) {
+        pros::lcd::print(0, "Skills Auto Error: %s", e.what());
+    };
+}
+>>>>>>> c6f96015ecaf8884782d51ad20585e033abc083a
