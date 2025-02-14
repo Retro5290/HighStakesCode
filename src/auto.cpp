@@ -667,7 +667,7 @@ void liam_skills() {
         // Q1 ---
         robot::drivetrain::chassis.turnToPoint(point1x, point1y, 1000); 
         robot::drivetrain::chassis.waitUntilDone();  
-        autosetting::run_intake(20000);
+        autosetting::run_intake(25000);
         autosetting::pickup_ring(point1x, point1y, 9, 4); //1111111
 
         pros::delay(200);
@@ -682,8 +682,9 @@ void liam_skills() {
         pros::delay(200);
         robot::drivetrain::chassis.turnToPoint(point5x, point5y, 1000, {.forwards = false});
         robot::drivetrain::chassis.moveToPoint(point5x, point5y, 1500, {.forwards = false, .maxSpeed = 70});
-        pros::delay(200);
+        pros::delay(1500);
         robot::mechanisms::clamp.set_value(false);
+        pros::delay(300);
 
         // Q2 ---
         
@@ -692,9 +693,13 @@ void liam_skills() {
         
         robot::drivetrain::chassis.turnToPoint(point7x, point7y, 700, {.forwards = false});
         robot::drivetrain::chassis.moveToPoint(point7x, point7y, 2000, {.forwards = false, .minSpeed = 127, .earlyExitRange = 22});
-        robot::drivetrain::chassis.moveToPose(point7x, point7y, 0, 1500, {.forwards = false, .maxSpeed = 60});
-        robot::drivetrain::chassis.waitUntil(53); // travles total 60.396 in (12)
+        robot::drivetrain::chassis.moveToPose(point7x, point7y, 0, 1500, {.forwards = false, .maxSpeed = 45});
+        //robot::drivetrain::chassis.waitUntil(53); // travles total 60.396 in (12)
+        //maybe delete below if bad
+        robot::drivetrain::chassis.waitUntilDone();
+        //----------------------------------------
         robot::mechanisms::clamp.set_value(true);
+        pros::delay(750);
         
         robot::drivetrain::chassis.turnToPoint(point8x, point8y, 1000); 
         robot::drivetrain::chassis.waitUntilDone();
@@ -721,9 +726,11 @@ void liam_skills() {
         robot::drivetrain::chassis.moveToPoint(point12x, point12y, 1500, {.forwards = false, .maxSpeed = 70});
         pros::delay(200);
         robot::mechanisms::clamp.set_value(false);
+        pros::delay(400);
         
-        // Q3
-
+        // wall stake - liam code...
+        robot::drivetrain::chassis.turnToPoint(0, -56, 1000, {.forwards = false});
+        robot::drivetrain::chassis.turnToPoint(-0.2, -69.669, 1000, {.forwards = true});
 
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Skills Auto Error: %s", e.what());
