@@ -591,8 +591,8 @@ void autonomous() {
     }
 }
 
+ASSET(rings_txt);
 void liam_skills() {
-    ASSET(rings_txt);
     // Q1
     // Ring 1
     float point1x = -21;
@@ -707,13 +707,11 @@ void liam_skills() {
         robot::drivetrain::chassis.moveToPoint(point8x, point8y, 1000, {.minSpeed = 120, .earlyExitRange = 20});
         robot::drivetrain::chassis.moveToPoint(point8x, point8y, 1000, {.maxSpeed = 70});
         pros::delay(200);
-        //test stuff - ring 1 to 2
-        robot::drivetrain::chassis.follow(rings_txt, 10, 10000);
-        /*idfk kms I hate everything
+        //idfk kms I hate everything
         robot::drivetrain::chassis.turnToPoint(point9x, point9y, 1000);
         robot::drivetrain::chassis.moveToPoint(point9x, point9y, 1500, {.minSpeed = 127, .earlyExitRange = 20});  
         robot::drivetrain::chassis.moveToPoint(point9x, point9y, 1500, {.maxSpeed = 70});
-        */
+        
         pros::delay(200);
         robot::drivetrain::chassis.turnToPoint(point10x, point10y, 1000);
         robot::drivetrain::chassis.moveToPoint(point10x, point10y, 4000, {.maxSpeed = 50});
@@ -728,9 +726,7 @@ void liam_skills() {
         robot::mechanisms::clamp.set_value(false);
         pros::delay(400);
         
-        // wall stake - liam code...
-        robot::drivetrain::chassis.turnToPoint(0, -56, 1000, {.forwards = false});
-        robot::drivetrain::chassis.turnToPoint(-0.2, -69.669, 1000, {.forwards = true});
+
 
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Skills Auto Error: %s", e.what());

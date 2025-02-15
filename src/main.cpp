@@ -124,6 +124,9 @@ namespace controls {
                         break;
                     case LBToggleState::INTAKE:
                         lbState = LBToggleState::CLEAR;
+
+                        //kms Jerry wtf is this code I understand nothing -Liam
+
                         break;
                     case LBToggleState::CLEAR:
                         lbState = LBToggleState::IDLE;
