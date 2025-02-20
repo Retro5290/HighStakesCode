@@ -495,47 +495,54 @@ void blue_ring_auto() {
 ASSET(BlueStakeRush_txt);
 ASSET(BlueStakeReturn_txt);
 void blue_stake_auto() {
+    float ring1x = 12.421;
+    float ring1y = -59.028;
+    float stake2x = 29.51;
+    float stake2y = -7.76;
     try {
-        robot::drivetrain::chassis.setPose(52.053, -59.611, 270);
-        robot::drivetrain::chassis.follow(BlueStakeRush_txt, 10, 10000);
+        robot::drivetrain::chassis.setPose(-52.053, -59.611, 90);
+        robot::drivetrain::chassis.follow(RedStakeRush_txt, 10, 10000);
         robot::drivetrain::chassis.waitUntilDone();
         robot::mechanisms::doinker.set_value(true);
         pros::delay(100);
-        robot::drivetrain::chassis.follow(BlueStakeReturn_txt, 10, 10000, false);
+        robot::drivetrain::chassis.follow(RedStakeReturn_txt, 10, 10000, false);
         robot::drivetrain::chassis.waitUntilDone();
         robot::mechanisms::doinker.set_value(false);
-        /*
-        robot::drivetrain::chassis.moveToPoint(49.528, -60.194, 1000, {.forwards = false});
-        robot::drivetrain::chassis.turnToHeading(270, 1000);
-        robot::drivetrain::chassis.moveToPoint(19.74, -60.194, 1500, {.forwards = false, .maxSpeed = 70});
-        robot::drivetrain::chassis.waitUntil(25);
-        robot::mechanisms::clamp.set_value(true);
+        robot::drivetrain::chassis.moveToPoint(-49.528, -60.194, 1000, {.forwards = false});
         robot::drivetrain::chassis.waitUntilDone();
-        autosetting::run_intake(2000);
-        robot::drivetrain::chassis.moveToPoint(50.499, -59.028, 1500);
-        robot::drivetrain::chassis.turnToPoint(29.137, -50.095, 1000, {.direction = AngularDirection::CW_CLOCKWISE});
+        robot::drivetrain::chassis.setPose(49.528, -35.806, 270);
+        
+        robot::drivetrain::chassis.turnToPoint(20.189, -43.493, 1000, {.forwards = false});
+        robot::drivetrain::chassis.moveToPoint(20.189, -43.493, 1000, {.forwards = false, .maxSpeed = 60});
+        robot::drivetrain::chassis.waitUntil(32);
+        robot::mechanisms::clamp.set_value(true);
+        autosetting::run_intake(1700);
+        pros::delay(200);
+        robot::drivetrain::chassis.moveToPoint(54.95, -41.162, 1500);
+        robot::drivetrain::chassis.turnToPoint(ring1x, ring1y, 1000);
         robot::drivetrain::chassis.waitUntilDone();
         robot::mechanisms::clamp.set_value(false);
-        pros::delay(100);
+
 
         // Day 2 stuff (need tuning)
-        robot::drivetrain::chassis.moveToPoint(25.253, -47.182, 1500, {.minSpeed = 127, .earlyExitRange = 20});
-        robot::drivetrain::chassis.waitUntilDone();
-        autosetting::run_intake(900);
-        robot::drivetrain::chassis.moveToPoint(25.253, -47.182, 1500, {.maxSpeed = 70});
-        robot::drivetrain::chassis.waitUntilDone();
-        robot::drivetrain::chassis.turnToPoint(22.923, -19.334, 1000, {.forwards = false});
-        robot::drivetrain::chassis.moveToPoint(22.923, -19.334, 1500, {.forwards = false, .maxSpeed = 80});
-        robot::drivetrain::chassis.waitUntil(25);
-        robot::mechanisms::clamp.set_value(true);
+        robot::drivetrain::chassis.moveToPoint(ring1x, ring1y, 1500, {.minSpeed = 127, .earlyExitRange = 15}); // 35.7
         robot::drivetrain::chassis.waitUntilDone();  
+        autosetting::run_intake(1000); 
+        robot::drivetrain::chassis.moveToPoint(ring1x, ring1y, 1000, {.maxSpeed = 80});
+        robot::drivetrain::chassis.turnToPoint(stake2x, stake2y, 1000, {.forwards = false});
+        robot::drivetrain::chassis.moveToPoint(stake2x, stake2y, 1500, {.forwards = false, .minSpeed = 127, .earlyExitRange = 30});
+        robot::drivetrain::chassis.moveToPoint(stake2x, stake2y, 1500, {.forwards = false, .maxSpeed = 70});
+        robot::drivetrain::chassis.waitUntil(10);
+        robot::mechanisms::clamp.set_value(true);
+        
+        pros::delay(300);
         autosetting::run_intake(3000);
         pros::delay(300);
-        robot::drivetrain::chassis.turnToHeading(340, 1000);
-        robot::drivetrain::chassis.moveToPoint(21.564, -12.809, 1500);
+        robot::drivetrain::chassis.turnToHeading(17, 1000);
         robot::drivetrain::chassis.waitUntilDone();
         robot::mechanisms::doinker.set_value(true);
-        */
+
+        
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Two Stake Blue Auto Error: %s", e.what());
     }
@@ -620,8 +627,8 @@ void liam_skills() {
     float point6y = 25;
 
     // Stake 2 (part 2)
-    float point7x = -48;
-    float point7y = -24;
+    float point7x = -47;
+    float point7y = -26;
 
     // Ring 1
     float point8x = -23.506;
@@ -725,9 +732,12 @@ void liam_skills() {
         pros::delay(200);
         robot::mechanisms::clamp.set_value(false);
         pros::delay(400);
-        
-
-
+        robot::drivetrain::chassis.moveToPoint(1, -55, 1500, {.forwards = false, .maxSpeed = 70});
+        robot::drivetrain::chassis.moveToPoint(53, -9, 1500, {.forwards = false, .maxSpeed = 70});
+        robot::drivetrain::chassis.moveToPoint(64, -65, 1500, {.forwards = false, .maxSpeed = 70});
+        robot::drivetrain::chassis.moveToPoint(53, -9, 1500, {.forwards = true, .maxSpeed = 70});
+        robot::drivetrain::chassis.moveToPoint(56, 12, 1500, {.forwards = true, .maxSpeed = 70});
+        robot::drivetrain::chassis.moveToPoint(67, 66, 1500, {.forwards = true, .maxSpeed = 70});
     } catch (const std::exception& e) {
         pros::lcd::print(0, "Skills Auto Error: %s", e.what());
     };
